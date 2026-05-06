@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Academia — Boletins</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0ec;color:#1c1c1a;min-height:100vh}
+:root{
+  --bg:#fff;--bg2:#f5f5f4;--bg3:#eeeee9;
+  --bgi:#e6f1fb;--bgs:#eaf3de;--bgw:#faeeda;--bgd:#fcebeb;
+  --t:#1c1c1a;--t2:#5f5e5a;--ti:#185fa5;--ts:#3b6d11;--tw:#854f0b;--td:#a32d2d;
+  --bi:#85b7eb;--bs:#97c459;--bw:#ef9f27;--bd:#f09595;
+  --br:8px;--brl:12px
+}
+input,select,textarea{width:100%;padding:8px 12px;border:0.5px solid rgba(28,28,26,0.3);border-radius:var(--br);background:var(--bg);color:var(--t);font-family:inherit;font-size:14px;outline:none;box-sizing:border-box}
+input:focus,select:focus,textarea:focus{border-color:var(--bi);box-shadow:0 0 0 3px rgba(24,95,165,0.1)}
+button{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:transparent;border:0.5px solid rgba(28,28,26,0.3);border-radius:var(--br);color:var(--t);font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s}
+button:hover{background:var(--bg2)}
+button:disabled{opacity:0.6;cursor:not-allowed}
+.card{background:var(--bg);border:0.5px solid rgba(28,28,26,0.15);border-radius:var(--brl);padding:1.5rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{font-size:13px;color:var(--t2);display:block;margin-bottom:4px}
+header{background:var(--bg);border-bottom:0.5px solid rgba(28,28,26,0.15);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.wrap{max-width:720px;margin:0 auto;padding:1.5rem 1rem}
+.alert{padding:.75rem 1rem;border-radius:var(--br);font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.tabs{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:8px 18px;border-radius:var(--br);font-size:14px;cursor:pointer;border:0.5px solid rgba(28,28,26,0.15);background:var(--bg2);color:var(--t2)}
+.tab.active{background:var(--bgi);color:var(--ti);border-color:var(--bi)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.5rem}
+.stat{background:var(--bg2);border-radius:var(--br);padding:.875rem 1rem}
+.stat .lbl{font-size:12px;color:var(--t2);margin-bottom:4px}
+.stat .val{font-size:22px;font-weight:500}
+.person{background:var(--bg);border:0.5px solid rgba(28,28,26,0.15);border-radius:var(--brl);padding:1rem 1.25rem;margin-bottom:10px}
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin:10px 0}
+.mini{background:var(--bg2);border-radius:var(--br);padding:6px 10px}
+.mini .lbl{font-size:11px;color:var(--t2);margin-bottom:2px}
+.mini .val{font-size:16px;font-weight:500}
+.bar-wrap{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;flex:1}
+.bar{height:100%;border-radius:4px;transition:width .4s}
+.badge{font-size:12px;font-weight:500;padding:3px 10px;border-radius:var(--br)}
+.filter-bar{background:var(--bg);border:0.5px solid rgba(28,28,26,0.15);border-radius:var(--br);padding:.75rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fbtn{font-size:13px;padding:4px 12px;border-radius:var(--br);cursor:pointer;border:0.5px solid rgba(28,28,26,0.15);background:transparent;color:var(--t2)}
+.fbtn.active{background:var(--bgi);color:var(--ti);border-color:var(--bi)}
+.entry{background:var(--bg2);border-radius:var(--br);padding:.75rem 1rem;font-size:13px;margin-bottom:6px}
+.hidden{display:none!important}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--bgi);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:13px;color:var(--ti);flex-shrink:0}
+textarea{resize:vertical;padding:8px 12px;border:0.5px solid rgba(28,28,26,0.3);border-radius:var(--br);background:var(--bg);color:var(--t);font-family:inherit;font-size:14px}
+input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
+.section-title{font-size:15px;font-weight:500;margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="pg-login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:100%;max-width:400px">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--bgi);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+        <i class="ti ti-barbell" style="font-size:26px;color:var(--ti)"></i>
+      </div>
+      <h1 style="font-size:20px;font-weight:500">Academia — Boletins</h1>
+      <p style="font-size:13px;color:var(--t2);margin-top:4px">Equipe: só o nome · Gestor: nome + senha</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field"><label>Seu nome</label><input id="l-name" placeholder="Ex: Lucas, Keila..."/></div>
+      <div class="field"><label>Senha <span style="font-weight:400;color:var(--t2)">(somente gestores)</span></label><input id="l-pass" type="password" placeholder="Deixe em branco se for da equipe"/></div>
+      <div id="l-err" class="hidden" style="font-size:13px;color:var(--td)"></div>
+      <button id="l-btn" onclick="doLogin()" style="justify-content:center;background:var(--bgi);color:var(--ti);border-color:var(--bi)"><i class="ti ti-login"></i> Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM -->
+<div id="pg-team" class="hidden">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <i class="ti ti-barbell" style="font-size:22px;color:var(--ti)"></i>
+      <span style="font-weight:500">Boletim Diário</span>
+      <span id="t-name" style="font-size:13px;color:var(--t2)"></span>
+    </div>
+    <button onclick="logout()"><i class="ti ti-logout"></i> Sair</button>
+  </header>
+  <div class="wrap">
+    <div id="t-ok" class="hidden alert" style="background:var(--bgs);color:var(--ts);border:0.5px solid var(--bs)"><i class="ti ti-circle-check"></i> Boletim salvo!</div>
+    <div id="t-err" class="hidden alert" style="background:var(--bgd);color:var(--td);border:0.5px solid var(--bd)"><i class="ti ti-alert-circle"></i> Erro ao salvar. Tente novamente.</div>
+    <div class="tabs">
+      <div class="tab active" onclick="setTeamTab('rec')" id="ttab-rec"><i class="ti ti-phone-call"></i> Recepção</div>
+      <div class="tab" onclick="setTeamTab('mus')" id="ttab-mus"><i class="ti ti-barbell"></i> Musculação</div>
+    </div>
+
+    <!-- FORM RECEPÇÃO -->
+    <div id="form-rec" class="card">
+      <h2 style="font-size:16px;font-weight:500;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px"><i class="ti ti-phone-call" style="color:var(--ti)"></i> Boletim — Consultor de Vendas</h2>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Consultor</label><input id="r-author" disabled/></div>
+        <div class="field"><label>Data</label><input id="r-date" type="date"/></div>
+        <div class="field"><label>Visitas</label><input id="r-visits" type="number" placeholder="0"/></div>
+        <div class="field"><label>Agendamentos</label><input id="r-appts" type="number" placeholder="0"/></div>
+        <div class="field"><label>Contatos (listas)</label><input id="r-contacts" type="number" placeholder="0"/></div>
+      </div>
+      <div class="field" style="margin-bottom:12px"><label>Vendas realizadas</label><textarea id="r-sales" rows="3" placeholder="Nome - código. Uma por linha."></textarea></div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;color:var(--t2);display:block;margin-bottom:8px">Motivos de não fechamento</label>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="r-reason" value="Preço"> Preço</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="r-reason" value="Tempo / indecisão"> Tempo / indecisão</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="r-reason" value="Comparando com outra academia"> Comparando com outra academia</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="r-reason" value="Não era o momento"> Não era o momento</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" class="r-reason" value="Outro" onchange="toggleOutro(this)"> Outro</label>
+          <input id="r-outro" class="hidden" placeholder="Descreva o motivo..." style="margin-left:24px;width:calc(100% - 24px)"/>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px"><label>Observações</label><input id="r-notes" placeholder="Algo relevante do dia..."/></div>
+      <button id="r-btn" onclick="saveRecepcao()" style="width:100%;justify-content:center;background:var(--bgi);color:var(--ti);border-color:var(--bi)"><i class="ti ti-device-floppy"></i> Salvar boletim</button>
+    </div>
+
+    <!-- FORM MUSCULAÇÃO -->
+    <div id="form-mus" class="card hidden">
+      <h2 style="font-size:16px;font-weight:500;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px"><i class="ti ti-barbell" style="color:var(--tw)"></i> Boletim — Musculação</h2>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Professor / Estagiário</label><input id="m-author" disabled/></div>
+        <div class="field"><label>Data</label><input id="m-date" type="date"/></div>
+        <div class="field"><label>Turno</label><select id="m-shift"><option>Manhã</option><option>Tarde</option><option>Noite</option></select></div>
+        <div class="field"><label>Treinos prescritos (total)</label><input id="m-trainings" type="number" placeholder="0"/></div>
+        <div class="field"><label>Novos treinos</label><input id="m-new" type="number" placeholder="0"/></div>
+        <div class="field"><label>Renovação de treinos</label><input id="m-renew" type="number" placeholder="0"/></div>
+        <div class="field"><label>Engajamento (+/-)</label><input id="m-eng" placeholder="Ex: +7 ou -2"/></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+        <div class="field"><label>Equipamentos com problema</label><input id="m-equip" placeholder="Ex: Esteira nº 9 — ou deixe em branco"/></div>
+        <div class="field"><label>Organização do salão</label><input id="m-org" placeholder="Ex: Sim, 2x · Não — motivo..."/></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;color:var(--t2);display:block;margin-bottom:6px">Contagem no salão feita?</label>
+        <div style="display:flex;gap:16px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Sim" checked> Sim</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Não"> Não</label>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px"><label>Observações</label><input id="m-notes" placeholder="Algo relevante do turno..."/></div>
+      <button id="m-btn" onclick="saveMusculacao()" style="width:100%;justify-content:center;background:var(--bgw);color:var(--tw);border-color:var(--bw)"><i class="ti ti-device-floppy"></i> Salvar boletim</button>
+    </div>
+  </div>
+</div>
+
+<!-- GESTOR -->
+<div id="pg-gestor" class="hidden">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <i class="ti ti-barbell" style="font-size:22px;color:var(--ti)"></i>
+      <span style="font-weight:500">Painel do Gestor</span>
+      <span id="g-role-badge" style="font-size:12px;background:var(--bgi);color:var(--ti);padding:2px 8px;border-radius:var(--br)"></span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="loadGestor()" style="font-size:13px"><i class="ti ti-refresh"></i> Atualizar</button>
+      <button onclick="logout()" style="font-size:13px"><i class="ti ti-logout"></i> Sair</button>
+    </div>
+  </header>
+  <div class="wrap" style="max-width:900px">
+    <div class="filter-bar">
+      <i class="ti ti-filter" style="color:var(--t2);font-size:16px"></i>
+      <button class="fbtn active" onclick="setFilter('today',this)">Hoje</button>
+      <button class="fbtn" onclick="setFilter('week',this)">Esta semana</button>
+      <button class="fbtn" onclick="setFilter('all',this)">Tudo</button>
+      <button class="fbtn" onclick="setFilter('custom',this)">Personalizado</button>
+      <span id="custom-dates" class="hidden" style="display:flex;align-items:center;gap:8px">
+        <input type="date" id="f-from" style="width:140px;font-size:13px" onchange="renderGestor()"/>
+        <span style="font-size:13px;color:var(--t2)">até</span>
+        <input type="date" id="f-to" style="width:140px;font-size:13px" onchange="renderGestor()"/>
+      </span>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="setGTab('dash')" id="gtab-dash"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="tab" onclick="setGTab('rec')" id="gtab-rec"><i class="ti ti-phone-call"></i> Recepção</div>
+      <div class="tab" onclick="setGTab('mus')" id="gtab-mus"><i class="ti ti-barbell"></i> Musculação</div>
+      <div class="tab" id="gtab-cfg" onclick="setGTab('cfg')"><i class="ti ti-users"></i> Acessos</div>
+    </div>
+    <div id="g-loading" style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:8px"></i>Carregando...</div>
+    <div id="g-content" class="hidden">
+      <div id="gpg-dash"></div>
+      <div id="gpg-rec" class="hidden"></div>
+      <div id="gpg-mus" class="hidden"></div>
+      <div id="gpg-cfg" class="hidden"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://cpebkpckoqypdbqhicmw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ssz6g9ZtGtPTLqk_WbMOGQ_TYipbztR';
+const GESTOR_PASS = 'gestor2024';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = '', currentRole = '', allData = [], allFeedbacks = {}, allViewers = [];
+let currentFilter = 'today', currentGTab = 'dash';
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+const todayStr = () => new Date().toISOString().split('T')[0];
+const fmtDate = d => { if(!d) return ''; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; };
+const parseDate = s => { if(!s) return null; const [y,m,d]=s.split('-'); return new Date(+y,+m-1,+d); };
+const show = id => document.getElementById(id).classList.remove('hidden');
+const hide = id => document.getElementById(id).classList.add('hidden');
+const el = id => document.getElementById(id);
+const initials = name => name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+// ── LOGIN ──────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const name = el('l-name').value.trim();
+  const pass = el('l-pass').value;
+  hide('l-err');
+  if (!name) { showErr('l-err','Digite seu nome.'); return; }
+  if (pass === GESTOR_PASS) { currentRole='gestor'; enterGestor(name); return; }
+  if (pass !== '') { showErr('l-err','Senha incorreta.'); return; }
+  const {data} = await sb.from('viewers').select('name');
+  const isViewer = data && data.some(v => v.name.toLowerCase() === name.toLowerCase());
+  if (isViewer) { currentRole='viewer'; enterGestor(name); return; }
+  currentRole='team'; enterTeam(name);
+}
+
+function showErr(id, msg) { const e=el(id); e.textContent=msg; e.classList.remove('hidden'); }
+
+el('l-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+el('l-name').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ── TEAM ───────────────────────────────────────────────────────────────────
+function enterTeam(name) {
+  currentUser = name;
+  hide('pg-login'); show('pg-team');
+  el('t-name').textContent = '— ' + name;
+  el('r-author').value = name;
+  el('m-author').value = name;
+  el('r-date').value = todayStr();
+  el('m-date').value = todayStr();
+}
+
+function setTeamTab(t) {
+  ['rec','mus'].forEach(x => { el('ttab-'+x).classList.toggle('active', x===t); el('form-'+x).classList.toggle('hidden', x!==t); });
+}
+
+function toggleOutro(cb) { el('r-outro').classList.toggle('hidden', !cb.checked); }
+
+async function saveRecepcao() {
+  const btn = el('r-btn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
+  hide('t-ok'); hide('t-err');
+  const reasons = [...document.querySelectorAll('.r-reason:checked')].map(c=>c.value);
+  const d = {
+    type:'recepcao', author:currentUser, date:el('r-date').value,
+    data:{ visits:el('r-visits').value, appointments:el('r-appts').value,
+      contacts:el('r-contacts').value, sales:el('r-sales').value,
+      noSaleReasons:reasons, noSaleOther:el('r-outro').value, notes:el('r-notes').value }
+  };
+  const {error} = await sb.from('boletins').insert(d);
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
+  if (error) { show('t-err'); return; }
+  show('t-ok'); setTimeout(()=>hide('t-ok'),4000);
+  el('r-visits').value=''; el('r-appts').value=''; el('r-contacts').value='';
+  el('r-sales').value=''; el('r-outro').value=''; el('r-notes').value='';
+  document.querySelectorAll('.r-reason').forEach(c=>c.checked=false);
+  el('r-outro').classList.add('hidden');
+}
+
+async function saveMusculacao() {
+  const btn = el('m-btn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
+  hide('t-ok'); hide('t-err');
+  const countDone = document.querySelector('input[name="countDone"]:checked')?.value || 'Sim';
+  const d = {
+    type:'musculacao', author:currentUser, date:el('m-date').value,
+    data:{ shift:el('m-shift').value, trainings:el('m-trainings').value,
+      newTrainings:el('m-new').value, renewTrainings:el('m-renew').value,
+      engagement:el('m-eng').value, equipment:el('m-equip').value,
+      organization:el('m-org').value, countDone, notes:el('m-notes').value }
+  };
+  const {error} = await sb.from('boletins').insert(d);
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
+  if (error) { show('t-err'); return; }
+  show('t-ok'); setTimeout(()=>hide('t-ok'),4000);
+  el('m-trainings').value=''; el('m-new').value=''; el('m-renew').value='';
+  el('m-eng').value=''; el('m-equip').value=''; el('m-org').value=''; el('m-notes').value='';
+}
+
+// ── GESTOR ─────────────────────────────────────────────────────────────────
+async function enterGestor(name) {
+  currentUser = name;
+  hide('pg-login'); show('pg-gestor');
+  el('g-role-badge').textContent = currentRole==='gestor' ? 'Admin' : 'Visualização';
+  if (currentRole !== 'gestor') { hide('gtab-cfg'); }
+  await loadGestor();
+}
+
+async function loadGestor() {
+  show('g-loading'); hide('g-content');
+  const [bRes, fRes, vRes] = await Promise.all([
+    sb.from('boletins').select('*').order('created_at',{ascending:false}),
+    sb.from('feedbacks').select('*'),
+    sb.from('viewers').select('*').order('id')
+  ]);
+  allData = (bRes.data||[]).map(r=>({...r.data, id:r.id, author:r.author, date:r.date, type:r.type}));
+  allFeedbacks = (fRes.data||[]).reduce((a,r)=>{a[r.author]=r.feedback;return a;},{});
+  allViewers = vRes.data||[];
+  hide('g-loading'); show('g-content');
+  renderGestor();
+}
+
+function getFiltered() {
+  const now = new Date(), todayS = todayStr();
+  const startW = new Date(now); startW.setDate(now.getDate()-now.getDay()); startW.setHours(0,0,0,0);
+  return allData.filter(d => {
+    const dt = parseDate(d.date); if (!dt) return false;
+    if (currentFilter==='today') return d.date===todayS;
+    if (currentFilter==='week') return dt>=startW;
+    if (currentFilter==='custom') {
+      const from=parseDate(el('f-from').value), to=parseDate(el('f-to').value);
+      return from && to && dt>=from && dt<=to;
+    }
+    return true;
+  });
+}
+
+function setFilter(f, btn) {
+  currentFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const cd=el('custom-dates');
+  f==='custom' ? cd.style.display='flex' : cd.style.display='none';
+  renderGestor();
+}
+
+function setGTab(t) {
+  ['dash','rec','mus','cfg'].forEach(x=>{
+    el('gtab-'+x)?.classList.toggle('active',x===t);
+    el('gpg-'+x)?.classList.toggle('hidden',x!==t);
+  });
+  currentGTab=t;
+}
+
+function renderGestor() {
+  const filtered = getFiltered();
+  const rData = filtered.filter(d=>d.type==='recepcao');
+  const mData = filtered.filter(d=>d.type==='musculacao');
+  renderDash(filtered, rData, mData);
+  renderDetails('rec', rData);
+  renderDetails('mus', mData);
+  renderConfig();
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+const totalSales = e => e.reduce((n,d)=>n+(d.sales?.split('\n').filter(l=>l.trim()).length||0),0);
+const totalContacts = e => e.reduce((n,d)=>n+(+d.contacts||0),0);
+const totalVisits = e => e.reduce((n,d)=>n+(+d.visits||0),0);
+const totalTrainings = e => e.reduce((n,d)=>n+(+d.trainings||0),0);
+const totalEngagement = e => e.reduce((n,d)=>{const v=String(d.engagement||'').replace('+','');return n+(+v||0);},0);
+const convRate = e => { const v=totalVisits(e),s=totalSales(e); return v?Math.round(s/v*100):0; };
+
+function scorecard(entries, type) {
+  if (type==='recepcao') {
+    const cr=convRate(entries),c=totalContacts(entries),s=totalSales(entries);
+    let sc=0;
+    if(cr>=50)sc+=40;else if(cr>=30)sc+=25;else if(cr>=10)sc+=10;
+    if(c>=20)sc+=30;else if(c>=10)sc+=20;else if(c>=5)sc+=10;
+    if(s>=3)sc+=30;else if(s>=1)sc+=15;
+    return Math.min(sc,100);
+  } else {
+    const t=totalTrainings(entries),eng=totalEngagement(entries);
+    let sc=0;
+    if(t>=10)sc+=40;else if(t>=5)sc+=25;else if(t>=2)sc+=10;
+    if(eng>10)sc+=35;else if(eng>5)sc+=20;else if(eng>0)sc+=10;
+    const eqOk=entries.filter(e=>!e.equipment?.trim()).length;
+    sc+=Math.round(eqOk/Math.max(entries.length,1)*25);
+    return Math.min(sc,100);
+  }
+}
+
+function scoreBadge(s) {
+  if(s>=80) return {label:'Excelente',bg:'var(--bgs)',color:'var(--ts)'};
+  if(s>=60) return {label:'Bom',bg:'var(--bgi)',color:'var(--ti)'};
+  if(s>=40) return {label:'Regular',bg:'var(--bgw)',color:'var(--tw)'};
+  return {label:'Atenção',bg:'var(--bgd)',color:'var(--td)'};
+}
+
+function barColor(s) {
+  if(s>=80) return '#22c55e'; if(s>=60) return '#3b82f6'; if(s>=40) return '#f59e0b'; return '#ef4444';
+}
+
+function byAuthor(arr) {
+  return arr.reduce((a,d)=>{ a[d.author]=a[d.author]||[]; a[d.author].push(d); return a; },{});
+}
+
+// ── RENDER DASH ────────────────────────────────────────────────────────────
+function renderDash(filtered, rData, mData) {
+  const rBy=byAuthor(rData), mBy=byAuthor(mData);
+  let html = `<div class="stat-grid">
+    <div class="stat"><div class="lbl"><i class="ti ti-file-text"></i> Total boletins</div><div class="val">${filtered.length}</div></div>
+    <div class="stat"><div class="lbl" style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> Vendas</div><div class="val">${totalSales(rData)}</div></div>
+    <div class="stat"><div class="lbl" style="color:var(--ti)"><i class="ti ti-address-book"></i> Contatos</div><div class="val">${totalContacts(rData)}</div></div>
+    <div class="stat"><div class="lbl"><i class="ti ti-door-enter"></i> Visitas</div><div class="val">${totalVisits(rData)}</div></div>
+    <div class="stat"><div class="lbl" style="color:var(--tw)"><i class="ti ti-barbell"></i> Treinos</div><div class="val">${totalTrainings(mData)}</div></div>
+    <div class="stat"><div class="lbl" style="color:var(--td)"><i class="ti ti-flame"></i> Engajamento</div><div class="val">+${totalEngagement(mData)}</div></div>
+  </div>`;
+  if(Object.keys(rBy).length) {
+    html+=`<div class="section-title"><i class="ti ti-phone-call"></i> Performance — Recepção</div>`;
+    for(const [a,e] of Object.entries(rBy)) html+=personCard(a,e,'recepcao');
+  }
+  if(Object.keys(mBy).length) {
+    html+=`<div class="section-title" style="margin-top:1.5rem"><i class="ti ti-barbell"></i> Performance — Musculação</div>`;
+    for(const [a,e] of Object.entries(mBy)) html+=personCard(a,e,'musculacao');
+  }
+  if(!filtered.length) html=`<div style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-inbox" style="font-size:40px;display:block;margin-bottom:.75rem"></i>Nenhum boletim no período.</div>`;
+  el('gpg-dash').innerHTML=html;
+}
+
+function personCard(author, entries, type) {
+  const sc=scorecard(entries,type), badge=scoreBadge(sc);
+  const fb=allFeedbacks[author]||'';
+  const stats = type==='recepcao'
+    ? `<div class="mini-grid">
+        <div class="mini"><div class="lbl">Vendas</div><div class="val">${totalSales(entries)}</div></div>
+        <div class="mini"><div class="lbl">Visitas</div><div class="val">${totalVisits(entries)}</div></div>
+        <div class="mini"><div class="lbl">Contatos</div><div class="val">${totalContacts(entries)}</div></div>
+        <div class="mini"><div class="lbl">Conversão</div><div class="val">${convRate(entries)}%</div></div>
+      </div>`
+    : `<div class="mini-grid">
+        <div class="mini"><div class="lbl">Treinos</div><div class="val">${totalTrainings(entries)}</div></div>
+        <div class="mini"><div class="lbl">Engajamento</div><div class="val">+${totalEngagement(entries)}</div></div>
+        <div class="mini"><div class="lbl">Boletins</div><div class="val">${entries.length}</div></div>
+      </div>`;
+  const fbHtml = fb ? `<div style="background:var(--bgi);border-radius:var(--br);padding:.625rem .875rem;margin-bottom:8px">
+    <p style="font-size:12px;color:var(--ti);margin:0 0 3px;font-weight:500"><i class="ti ti-message-circle"></i> Feedback do gestor</p>
+    <p style="font-size:13px;color:var(--ti);margin:0">${fb}</p></div>` : '';
+  const fbBtn = currentRole==='gestor' ? `<button onclick="openFeedback('${author}')" style="font-size:13px;padding:5px 12px"><i class="ti ti-message-plus"></i> ${fb?'Editar feedback':'Dar feedback'}</button>` : '';
+  return `<div class="person" id="pc-${author.replace(/\s/g,'_')}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar">${initials(author)}</div>
+        <div><p style="font-weight:500;font-size:15px;margin:0">${author}</p>
+        <p style="font-size:12px;color:var(--t2);margin:0">${entries.length} boletim${entries.length!==1?'s':''} · ${type==='recepcao'?'Consultor':'Prof. Musculação'}</p></div>
+      </div>
+      <span class="badge" style="background:${badge.bg};color:${badge.color}">${badge.label}</span>
+    </div>
+    <div style="margin-bottom:.75rem">
+      <p style="font-size:12px;color:var(--t2);margin:0 0 5px">Score card · ${sc}/100</p>
+      <div style="display:flex;align-items:center;gap:8px"><div class="bar-wrap"><div class="bar" style="width:${sc}%;background:${barColor(sc)}"></div></div><span style="font-size:13px;font-weight:500;min-width:30px">${sc}</span></div>
+    </div>
+    ${stats}${fbHtml}${fbBtn}
+  </div>`;
+}
+
+function renderDetails(tab, entries) {
+  const type = tab==='rec'?'recepcao':'musculacao';
+  const by=byAuthor(entries);
+  if(!entries.length) { el('gpg-'+tab).innerHTML=`<div style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-inbox" style="font-size:40px;display:block;margin-bottom:.75rem"></i>Nenhum boletim neste período.</div>`; return; }
+  let html='';
+  for(const [author,items] of Object.entries(by)) {
+    const sc=scorecard(items,type), badge=scoreBadge(sc);
+    html+=personCard(author,items,type);
+    for(const e of items) {
+      const rows = type==='recepcao'
+        ? `<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)">
+            <span><i class="ti ti-door-enter"></i> Visitas: <strong>${e.visits||0}</strong></span>
+            <span><i class="ti ti-address-book"></i> Contatos: <strong>${e.contacts||0}</strong></span>
+            <span style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> Vendas: <strong>${e.sales?.split('\n').filter(l=>l.trim()).length||0}</strong></span>
+          </div>`
+        : `<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)">
+            <span><i class="ti ti-barbell"></i> Treinos: <strong>${e.trainings||0}</strong></span>
+            <span><i class="ti ti-flame"></i> Engajamento: <strong>${e.engagement||0}</strong></span>
+            ${e.equipment?`<span style="color:var(--tw)"><i class="ti ti-tool"></i> ${e.equipment}</span>`:''}
+          </div>`;
+      html+=`<div class="entry">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-weight:500">${fmtDate(e.date)}</span>
+          ${type==='musculacao'?`<span style="font-size:12px;background:var(--bgw);color:var(--tw);padding:1px 8px;border-radius:var(--br)">${e.shift}</span>`:''}
+        </div>${rows}
+        ${e.notes?`<p style="margin:5px 0 0;color:var(--t2);font-style:italic">${e.notes}</p>`:''}
+      </div>`;
+    }
+  }
+  el('gpg-'+tab).innerHTML=html;
+}
+
+// ── FEEDBACK ───────────────────────────────────────────────────────────────
+function openFeedback(author) {
+  const existing = allFeedbacks[author]||'';
+  const txt = prompt(`Feedback para ${author}:`, existing);
+  if (txt===null) return;
+  saveFeedback(author, txt);
+}
+
+async function saveFeedback(author, feedback) {
+  await sb.from('feedbacks').upsert({author, feedback, updated_at:new Date().toISOString()},{onConflict:'author'});
+  allFeedbacks[author]=feedback;
+  renderGestor();
+}
+
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+function renderConfig() {
+  if(currentRole!=='gestor') return;
+  const rows = allViewers.map(v=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:6px">
+      <div><p style="font-size:14px;font-weight:500;margin:0">${v.name}</p>${v.email?`<p style="font-size:12px;color:var(--t2);margin:0">${v.email}</p>`:''}</div>
+      <button onclick="removeViewer(${v.id})" style="font-size:13px;color:var(--td);border-color:var(--bd);padding:4px 10px"><i class="ti ti-trash"></i> Remover</button>
+    </div>`).join('');
+  el('gpg-cfg').innerHTML=`
+    <div class="card">
+      <h2 style="font-size:15px;font-weight:500;margin-bottom:1rem;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Quem pode ver o painel</h2>
+      <p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Pessoas aqui acessam o painel sem senha — basta digitar o nome exato no login.</p>
+      ${rows||'<p style="font-size:13px;color:var(--t2)">Nenhum visualizador.</p>'}
+      <div class="grid2" style="margin-top:1rem">
+        <div class="field"><label>Nome</label><input id="v-name" placeholder="Nome completo"/></div>
+        <div class="field"><label>E-mail (opcional)</label><input id="v-email" placeholder="email@academia.com"/></div>
+      </div>
+      <button onclick="addViewer()" style="margin-top:12px"><i class="ti ti-user-plus"></i> Adicionar visualizador</button>
+    </div>
+    <div style="background:var(--bg2);border-radius:var(--br);padding:.875rem 1rem;font-size:13px;color:var(--t2);margin-top:1rem">
+      <i class="ti ti-info-circle"></i> Senha de admin: <code style="background:var(--bg3);padding:1px 6px;border-radius:4px">gestor2024</code>
+    </div>`;
+}
+
+async function addViewer() {
+  const name=el('v-name')?.value.trim(), email=el('v-email')?.value.trim();
+  if(!name) return;
+  const {data,error}=await sb.from('viewers').insert({name,email}).select().single();
+  if(!error){ allViewers.push(data); renderConfig(); }
+}
+
+async function removeViewer(id) {
+  await sb.from('viewers').delete().eq('id',id);
+  allViewers=allViewers.filter(v=>v.id!==id);
+  renderConfig();
+}
+
+// ── LOGOUT ─────────────────────────────────────────────────────────────────
+function logout() {
+  currentUser=''; currentRole='';
+  ['pg-team','pg-gestor'].forEach(hide);
+  show('pg-login');
+  el('l-name').value=''; el('l-pass').value=''; hide('l-err');
+}
+</script>
+</body>
+</html>
