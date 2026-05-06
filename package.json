@@ -1,0 +1,38 @@
+-- Execute este script no SQL Editor do Supabase
+-- Acesse: https://supabase.com → seu projeto → SQL Editor → New query
+
+-- Tabela principal de boletins
+create table if not exists boletins (
+  id bigint generated always as identity primary key,
+  type text not null,
+  author text not null,
+  date text not null,
+  data jsonb not null default '{}',
+  created_at timestamptz default now()
+);
+
+-- Tabela de feedbacks do gestor
+create table if not exists feedbacks (
+  id bigint generated always as identity primary key,
+  author text not null unique,
+  feedback text,
+  updated_at timestamptz default now()
+);
+
+-- Tabela de visualizadores autorizados
+create table if not exists viewers (
+  id bigint generated always as identity primary key,
+  name text not null,
+  email text,
+  created_at timestamptz default now()
+);
+
+-- Habilitar RLS (Row Level Security)
+alter table boletins enable row level security;
+alter table feedbacks enable row level security;
+alter table viewers enable row level security;
+
+-- Policies: permitir tudo via anon key (app controla acesso)
+create policy "allow_all_boletins" on boletins for all using (true) with check (true);
+create policy "allow_all_feedbacks" on feedbacks for all using (true) with check (true);
+create policy "allow_all_viewers" on viewers for all using (true) with check (true);
