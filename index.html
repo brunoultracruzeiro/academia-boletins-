@@ -441,6 +441,16 @@ function personCard(author,entries,type,unitLabel=''){
     ?`<div class="mini-grid"><div class="mini"><div class="lbl">Vendas</div><div class="val">${totalSales(entries)}</div></div><div class="mini"><div class="lbl">Visitas</div><div class="val">${totalVisits(entries)}</div></div><div class="mini"><div class="lbl">Contatos</div><div class="val">${totalContacts(entries)}</div></div><div class="mini"><div class="lbl">Conversão</div><div class="val">${convRate(entries)}%</div></div></div>`
     :`<div class="mini-grid"><div class="mini"><div class="lbl">Treinos</div><div class="val">${totalTrainings(entries)}</div></div><div class="mini"><div class="lbl">Engajamento</div><div class="val">+${totalEngagement(entries)}</div></div><div class="mini"><div class="lbl">Boletins</div><div class="val">${entries.length}</div></div></div>`;
   const fbHtml=fb?`<div style="background:var(--bgi);border-radius:var(--br);padding:.625rem .875rem;margin-bottom:8px"><p style="font-size:12px;color:var(--ti);margin:0 0 3px;font-weight:500"><i class="ti ti-message-circle"></i> Feedback salvo</p><p style="font-size:13px;color:var(--ti);margin:0">${fb}</p></div>`:'';
+  const boletinsHtml = entries.map(e=>{
+    const rows=type==='recepcao'
+      ?`<div style="display:flex;flex-wrap:wrap;gap:10px;color:var(--t2);font-size:12px"><span><i class="ti ti-door-enter"></i> ${e.visits||0} visitas</span><span><i class="ti ti-address-book"></i> ${e.contacts||0} contatos</span><span style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> ${e.sales?.split('\n').filter(l=>l.trim()).length||0} vendas</span></div>`
+      :`<div style="display:flex;flex-wrap:wrap;gap:10px;color:var(--t2);font-size:12px"><span><i class="ti ti-barbell"></i> ${e.trainings||0} treinos</span><span><i class="ti ti-flame"></i> +${e.engagement||0} eng</span>${e.shift?`<span>${e.shift}</span>`:''}</div>`;
+    return`<div style="background:var(--bg3);border-radius:var(--br);padding:7px 10px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div><span style="font-size:12px;font-weight:500;color:var(--t2)">${fmtDate(e.date)}</span><div style="margin-top:3px">${rows}</div></div>
+      ${currentRole==='admin'?`<button onclick="deleteBoletim(${e.id})" title="Excluir" style="font-size:11px;padding:3px 8px;color:var(--td);border-color:var(--bd);background:var(--bgd);flex-shrink:0"><i class="ti ti-trash"></i></button>`:''}
+    </div>`;
+  }).join('');
+
   return`<div class="person">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -457,7 +467,14 @@ function personCard(author,entries,type,unitLabel=''){
         <span style="font-size:13px;font-weight:500;min-width:30px">${sc}</span>
       </div>
     </div>
-    ${stats}${fbHtml}
+    ${stats}
+    <details style="margin-top:8px">
+      <summary style="font-size:12px;color:var(--t2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-list"></i> Ver boletins individuais ${currentRole==='admin'?'· <span style="color:var(--td)">excluir se necessário</span>':''}
+      </summary>
+      <div style="margin-top:4px">${boletinsHtml}</div>
+    </details>
+    ${fbHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button onclick="openFeedback('${author}')" style="font-size:13px;padding:5px 12px"><i class="ti ti-message-plus"></i> ${fb?'Editar feedback':'Dar feedback'}</button>
       <button onclick="runAI('${safeId}','${author}','${type}')" style="font-size:13px;padding:5px 12px;background:linear-gradient(135deg,#ede9fe,#f0f4ff);color:#5b3fd4;border-color:#c7b8f5"><i class="ti ti-sparkles"></i> Análise</button>
@@ -583,12 +600,12 @@ function renderDetails(tab,entries){
       const rows=type==='recepcao'
         ?`<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)"><span><i class="ti ti-door-enter"></i> Visitas: <strong>${e.visits||0}</strong></span><span><i class="ti ti-address-book"></i> Contatos: <strong>${e.contacts||0}</strong></span><span style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> Vendas: <strong>${e.sales?.split('\n').filter(l=>l.trim()).length||0}</strong></span></div>`
         :`<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)"><span><i class="ti ti-barbell"></i> Treinos: <strong>${e.trainings||0}</strong></span><span><i class="ti ti-flame"></i> Engajamento: <strong>${e.engagement||0}</strong></span>${e.equipment?`<span style="color:var(--tw)"><i class="ti ti-tool"></i> ${e.equipment}</span>`:''}</div>`;
-      html+=`<div class="entry"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      html+=`<div class="entry" style="position:relative"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:500">${fmtDate(e.date)}</span>
           ${type==='musculacao'?`<span style="font-size:12px;background:var(--bgw);color:var(--tw);padding:1px 8px;border-radius:var(--br)">${e.shift}</span>`:''}
         </div>
-        ${currentRole==='admin'?`<button onclick="deleteBoletim(${e.id})" style="font-size:11px;padding:2px 8px;color:var(--td);border-color:var(--bd);background:var(--bgd)"><i class="ti ti-trash"></i> Excluir</button>`:''}
+        ${currentRole==='admin'?`<button onclick="deleteBoletim(${e.id})" title="Excluir boletim" style="font-size:11px;padding:2px 8px;color:var(--td);border-color:var(--bd);background:var(--bgd);border-radius:var(--br)"><i class="ti ti-trash"></i> Excluir</button>`:''}
       </div>${rows}${e.notes?`<p style="margin:5px 0 0;color:var(--t2);font-style:italic">${e.notes}</p>`:''}</div>`;
     }
   }
