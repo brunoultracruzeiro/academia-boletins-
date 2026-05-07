@@ -208,6 +208,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
       <div class="tab" onclick="setGTab('rec')" id="gtab-rec"><i class="ti ti-phone-call"></i> Recepção</div>
       <div class="tab" onclick="setGTab('mus')" id="gtab-mus"><i class="ti ti-barbell"></i> Musculação</div>
       <div class="tab" onclick="setGTab('cfg')" id="gtab-cfg"><i class="ti ti-users"></i> Equipe</div>
+      <div class="tab" onclick="setGTab('import')" id="gtab-import"><i class="ti ti-file-upload"></i> Importar</div>
     </div>
     <div id="g-loading" style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-loader" style="font-size:32px;display:block;margin-bottom:8px"></i>Carregando...</div>
     <div id="g-content" class="hidden">
@@ -215,6 +216,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
       <div id="gpg-rec" class="hidden"></div>
       <div id="gpg-mus" class="hidden"></div>
       <div id="gpg-cfg" class="hidden"></div>
+      <div id="gpg-import" class="hidden"></div>
     </div>
   </div>
 </div>
@@ -366,8 +368,9 @@ function setFilter(f,btn){
 }
 
 function setGTab(t){
-  ['dash','rec','mus','cfg'].forEach(x=>{el('gtab-'+x)?.classList.toggle('active',x===t);el('gpg-'+x)?.classList.toggle('hidden',x!==t);});
+  ['dash','rec','mus','cfg','import'].forEach(x=>{el('gtab-'+x)?.classList.toggle('active',x===t);el('gpg-'+x)?.classList.toggle('hidden',x!==t);});
   currentGTab=t;
+  if(t==='import') renderImport();
 }
 
 function renderGestor(){
@@ -588,6 +591,141 @@ async function addStaff(){
   if(!error){allStaff.push(data);renderConfig();loadStaffList();}
 }
 async function removeStaff(id){await sb.from('staff').delete().eq('id',id);allStaff=allStaff.filter(s=>s.id!==id);renderConfig();loadStaffList();}
+
+// ── IMPORTAR RELATÓRIO ANTIGO ─────────────────────────────────────────────
+function renderImport(){
+  el('gpg-import').innerHTML=`
+    <div class="card">
+      <h2 style="font-size:15px;font-weight:500;margin-bottom:.5rem;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-file-upload"></i> Importar Relatório Antigo
+      </h2>
+      <p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Cole abaixo um relatório antigo no formato livre. A IA vai identificar cada funcionário, extrair os dados e salvar os boletins automaticamente.</p>
+      <div class="field" style="margin-bottom:10px">
+        <label>Data dos dados (se não estiver no texto)</label>
+        <input type="date" id="imp-date" value="${todayStr()}"/>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Unidade</label>
+        <select id="imp-unidade">
+          <option value="cruzeiro">Cruzeiro</option>
+          <option value="ceilandia">Ceilândia</option>
+          <option value="recanto">Recanto</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Cole o relatório aqui</label>
+        <textarea id="imp-text" rows="12" placeholder="Ex:
+Ricardo - 7 treinos, engajamento +12, turno manhã
+Keila - 3 vendas, 15 visitas, 20 contatos
+Priscila - 0 treinos, engajamento +5
+Amanda - 2 treinos, 1 novo treino..."></textarea>
+      </div>
+      <button onclick="processImport()" id="imp-btn" style="background:var(--bgi);color:var(--ti);border-color:var(--bi)">
+        <i class="ti ti-sparkles"></i> Processar e importar
+      </button>
+      <div id="imp-result" style="margin-top:1rem"></div>
+    </div>`;
+}
+
+async function processImport(){
+  const text=el('imp-text')?.value.trim();
+  const date=el('imp-date')?.value||todayStr();
+  const unidade=el('imp-unidade')?.value||UNIDADE_ID;
+  if(!text){alert('Cole o relatório primeiro!');return;}
+
+  const btn=el('imp-btn');
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Processando...';
+  el('imp-result').innerHTML='';
+
+  // Nomes dos funcionários cadastrados para ajudar a IA a identificar
+  const nomes=allStaff.map(s=>`${s.name} (${s.role==='recepcao'?'recepção':'musculação'})`).join(', ');
+
+  // Processar localmente — identificar blocos por nome
+  const linhas=text.split('\n').filter(l=>l.trim());
+  const boletinsParaSalvar=[];
+  const resultados=[];
+
+  for(const linha of linhas){
+    // Tentar identificar o funcionário na linha
+    const staffMatch=allStaff.find(s=>{
+      const nome=s.name.toLowerCase();
+      const primeiroNome=nome.split(' ')[0];
+      return linha.toLowerCase().includes(primeiroNome)||linha.toLowerCase().includes(nome);
+    });
+
+    if(!staffMatch) continue;
+
+    const l=linha.toLowerCase();
+    // Extrair dados de recepção
+    if(staffMatch.role==='recepcao'){
+      const vendas=extrairNumero(l,['venda','vendas','fechou','fechamento'])||0;
+      const visitas=extrairNumero(l,['visita','visitas'])||0;
+      const contatos=extrairNumero(l,['contato','contatos','lista','listas'])||0;
+      const agendamentos=extrairNumero(l,['agendamento','agendamentos'])||0;
+      boletinsParaSalvar.push({
+        type:'recepcao',author:staffMatch.name,date,unidade,
+        data:{visits:String(visitas),appointments:String(agendamentos),contacts:String(contatos),
+          sales:vendas>0?Array(vendas).fill('Importado').join('\n'):'',noSaleReasons:[],noSaleOther:'',notes:'Importado de relatório antigo'}
+      });
+      resultados.push({nome:staffMatch.name,tipo:'recepcao',dados:`${vendas} vendas · ${visitas} visitas · ${contatos} contatos`,ok:true});
+    } else {
+      // musculação
+      const treinos=extrairNumero(l,['treino','treinos','prescrito','prescritos'])||0;
+      const novos=extrairNumero(l,['novo','novos','primeiro','primeiros'])||0;
+      const eng=extrairNumero(l,['engajamento','engaj','+'])||0;
+      const turno=l.includes('tarde')?'Tarde':l.includes('noite')?'Noite':'Manhã';
+      const equip=l.includes('esteira')||l.includes('equipamento')||l.includes('quebr')?linha.substring(linha.toLowerCase().indexOf(l.includes('esteira')?'esteira':l.includes('equipamento')?'equipamento':'quebr')):'';
+      boletinsParaSalvar.push({
+        type:'musculacao',author:staffMatch.name,date,unidade,
+        data:{shift:turno,trainings:String(treinos),newTrainings:String(novos),renewTrainings:'0',
+          engagement:String(eng),equipment:equip,organization:'Sim',countDone:'Sim',notes:'Importado de relatório antigo'}
+      });
+      resultados.push({nome:staffMatch.name,tipo:'musculacao',dados:`${treinos} treinos · engaj ${eng} · ${turno}`,ok:true});
+    }
+  }
+
+  // Salvar no Supabase
+  let salvos=0, erros=0;
+  for(const b of boletinsParaSalvar){
+    const{error}=await sb.from('boletins').insert(b);
+    if(error) erros++; else salvos++;
+  }
+
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
+
+  if(resultados.length===0){
+    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgw);color:var(--tw);border:0.5px solid var(--bw)"><i class="ti ti-alert-circle"></i> Nenhum funcionário identificado. Verifique se os nomes do relatório batem com os cadastrados.</div>`;
+    return;
+  }
+
+  const rows=resultados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(r.nome)}</div>
+      <div><p style="font-size:13px;font-weight:500;margin:0">${r.nome}</p><p style="font-size:12px;color:var(--t2);margin:0">${r.dados}</p></div>
+    </div>
+    <span style="font-size:12px;background:var(--bgs);color:var(--ts);padding:2px 8px;border-radius:var(--br)">✅ Salvo</span>
+  </div>`).join('');
+
+  el('imp-result').innerHTML=`
+    <div style="background:var(--bgs);border:0.5px solid var(--bs);border-radius:var(--br);padding:.75rem 1rem;margin-bottom:12px;color:var(--ts);font-size:13px">
+      <i class="ti ti-circle-check"></i> ${salvos} boletim${salvos!==1?'s':''} importado${salvos!==1?'s':''} com sucesso${erros>0?` · ${erros} erro(s)`:''}.
+    </div>
+    ${rows}
+    <button onclick="loadGestor();setGTab('dash')" style="margin-top:8px;font-size:13px"><i class="ti ti-layout-dashboard"></i> Ver no dashboard</button>`;
+}
+
+function extrairNumero(texto,palavras){
+  for(const p of palavras){
+    const idx=texto.indexOf(p);
+    if(idx===-1) continue;
+    // procura número antes ou depois da palavra
+    const antes=texto.substring(Math.max(0,idx-10),idx).match(/(\d+)/);
+    const depois=texto.substring(idx,idx+15).match(/(\d+)/);
+    if(antes) return parseInt(antes[1]);
+    if(depois) return parseInt(depois[1]);
+  }
+  return null;
+}
 
 function logout(){currentUser='';currentRole='';['pg-team','pg-gestor'].forEach(hide);show('pg-login');el('admin-pass').value='';hide('admin-err');loadStaffList();}
 
