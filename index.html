@@ -425,118 +425,174 @@ function personCard(author,entries,type){
   </div>`;
 }
 
-// ── IA ANALYSIS ───────────────────────────────────────────────────────────
-async function runAI(safeId,author,type){
+// ── ANÁLISE LOCAL (sem API externa) ───────────────────────────────────────
+function runAI(safeId,author,type){
   const aiBox=el('ai-'+safeId);
   aiBox.classList.remove('hidden');
-  aiBox.innerHTML=`<div class="ai-box"><div class="ai-header"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cbf,#4f8ef7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="font-size:14px;color:#fff"></i></div><span class="ai-title">Analisando dados de ${author}...</span></div><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
+  aiBox.innerHTML=`<div class="ai-box"><div class="ai-header"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cbf,#4f8ef7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="font-size:14px;color:#fff"></i></div><span class="ai-title">Analisando ${author}...</span></div><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
 
-  // Pegar dados do período atual e semana passada
-  const filtered=getFiltered();
-  const prevWeek=getPrevWeek();
-  const curEntries=filtered.filter(d=>d.author===author&&d.type===type);
-  const prevEntries=prevWeek.filter(d=>d.author===author&&d.type===type);
+  setTimeout(()=>{
+    const filtered=getFiltered();
+    const prevWeek=getPrevWeek();
+    const cur=filtered.filter(d=>d.author===author&&d.type===type);
+    const prev=prevWeek.filter(d=>d.author===author&&d.type===type);
+    const periodo=currentFilter==='today'?'hoje':currentFilter==='week'?'esta semana':currentFilter==='month'?'este mês':'no período';
+    const nl2br=s=>s.split('\n').map(l=>`<div style="margin-bottom:5px">${l}</div>`).join('');
 
-  // Montar prompt com os dados reais
-  let dadosAtuais='', dadosAnteriores='', comparativo='';
+    let visao=[], destaques=[], atencao=[], problemaP='', direcionamento=[], feedback='', cenario='';
 
-  if(type==='recepcao'){
-    const cur={vendas:totalSales(curEntries),visitas:totalVisits(curEntries),contatos:totalContacts(curEntries),conv:convRate(curEntries),boletins:curEntries.length};
-    const prev={vendas:totalSales(prevEntries),visitas:totalVisits(prevEntries),contatos:totalContacts(prevEntries),conv:convRate(prevEntries),boletins:prevEntries.length};
-    dadosAtuais=`Vendas: ${cur.vendas}, Visitas: ${cur.visitas}, Contatos: ${cur.contatos}, Taxa de conversão: ${cur.conv}%, Boletins preenchidos: ${cur.boletins}`;
-    dadosAnteriores=prev.boletins>0?`Semana anterior — Vendas: ${prev.vendas}, Visitas: ${prev.visitas}, Contatos: ${prev.contatos}, Conversão: ${prev.conv}%`:'Sem dados da semana anterior para comparar.';
-    comparativo=prev.boletins>0?`Variação vendas: ${cur.vendas-prev.vendas>0?'+':''}${cur.vendas-prev.vendas}, Variação conversão: ${cur.conv-prev.conv>0?'+':''}${cur.conv-prev.conv}%`:'';
-  } else {
-    const cur={treinos:totalTrainings(curEntries),eng:totalEngagement(curEntries),boletins:curEntries.length,equip:curEntries.filter(e=>e.equipment?.trim()).length};
-    const prev={treinos:totalTrainings(prevEntries),eng:totalEngagement(prevEntries),boletins:prevEntries.length};
-    dadosAtuais=`Treinos prescritos: ${cur.treinos}, Engajamento: +${cur.eng}, Boletins: ${cur.boletins}, Dias com equipamento com problema: ${cur.equip}`;
-    dadosAnteriores=prev.boletins>0?`Semana anterior — Treinos: ${prev.treinos}, Engajamento: +${prev.eng}`:'Sem dados da semana anterior para comparar.';
-    comparativo=prev.boletins>0?`Variação treinos: ${cur.treinos-prev.treinos>0?'+':''}${cur.treinos-prev.treinos}, Variação engajamento: ${cur.eng-prev.eng>0?'+':''}${cur.eng-prev.eng}`:'';
-  }
+    if(type==='recepcao'){
+      const vendas=totalSales(cur), visitas=totalVisits(cur), contatos=totalContacts(cur), conv=convRate(cur);
+      const pVendas=totalSales(prev), pVisitas=totalVisits(prev), pContatos=totalContacts(prev), pConv=convRate(prev);
+      const temPrev=prev.length>0;
 
-  const feedbackAtual=allFeedbacks[author]||'Nenhum feedback registrado ainda.';
-  const periodo=currentFilter==='today'?'hoje':currentFilter==='week'?'esta semana':currentFilter==='month'?'este mês':'no período selecionado';
+      // Visão geral
+      visao.push(`📋 ${cur.length} boletim${cur.length!==1?'s':''} registrado${cur.length!==1?'s':''} ${periodo}`);
+      visao.push(`💰 ${vendas} venda${vendas!==1?'s':''} · ${visitas} visita${visitas!==1?'s':''} · ${contatos} contato${contatos!==1?'s':''}`);
+      if(conv>=40) visao.push(`📈 Conversão de ${conv}% — acima da média`);
+      else if(conv>0) visao.push(`📉 Conversão de ${conv}% — abaixo do esperado`);
+      else visao.push(`⚠️ Nenhuma venda convertida no período`);
 
-  // Detalhe dia a dia para o prompt
-  const detalheDias=curEntries.map(e=>{
-    if(type==='recepcao') return `  • ${fmtDate(e.date)}: ${e.visits||0} visitas, ${e.contacts||0} contatos, ${e.sales?.split('\n').filter(l=>l.trim()).length||0} vendas`;
-    return `  • ${fmtDate(e.date)} (${e.shift||'?'}): ${e.trainings||0} treinos, engajamento ${e.engagement||0}${e.equipment?', equip: '+e.equipment:''}`;
-  }).join('\n')||'  (sem registros no período)';
+      // Cenário
+      if(vendas===0) cenario=`👉 Período sem vendas — atenção imediata necessária`;
+      else if(conv>=50) cenario=`👉 Boa performance de conversão — manter ritmo e aumentar volume`;
+      else if(conv>=30) cenario=`👉 Conversão razoável — potencial para melhorar com mais visitas`;
+      else cenario=`👉 Volume de atividade presente, mas conversão precisa evoluir`;
 
-  const prompt=`Você é um analista sênior de performance de academias. Gere uma análise individual DETALHADA e DIRETA no estilo de um relatório gerencial de WhatsApp — com emojis, bullets, linguagem objetiva e orientada a ação.
+      // Destaques
+      if(vendas>0) destaques.push(`✅ ${vendas} venda${vendas!==1?'s':''} realizada${vendas!==1?'s':''} no período`);
+      if(contatos>=15) destaques.push(`✅ Alto volume de contatos: ${contatos} — boa prospecção`);
+      if(conv>=40) destaques.push(`✅ Taxa de conversão de ${conv}% — acima da média esperada`);
+      if(visitas>=5) destaques.push(`✅ ${visitas} visitas recebidas — bom fluxo de atendimento`);
+      if(temPrev && vendas>pVendas) destaques.push(`✅ Crescimento de vendas: ${pVendas} → ${vendas} (+${vendas-pVendas})`);
+      if(destaques.length===0) destaques.push(`⚪ Sem destaques positivos expressivos no período`);
 
-FUNCIONÁRIO: ${author}
-SETOR: ${type==='recepcao'?'Recepção / Vendas':'Musculação / Prescrição de treinos'}
-PERÍODO: ${periodo}
+      // Atenção
+      if(vendas===0) atencao.push(`🚨 Zero vendas no período — resultado crítico`);
+      if(conv<20&&visitas>0) atencao.push(`⚠️ Conversão de ${conv}% está muito abaixo — revisar abordagem`);
+      if(contatos<10) atencao.push(`⚠️ Apenas ${contatos} contatos — prospecção fraca`);
+      if(visitas<3) atencao.push(`⚠️ Apenas ${visitas} visitas — verificar fluxo de leads`);
+      if(temPrev&&vendas<pVendas) atencao.push(`🚨 Queda de vendas: ${pVendas} → ${vendas} (${vendas-pVendas})`);
+      if(temPrev&&conv<pConv) atencao.push(`⚠️ Conversão caiu: ${pConv}% → ${conv}%`);
+      if(atencao.length===0) atencao.push(`✅ Sem alertas críticos no período`);
 
-DADOS DO PERÍODO (dia a dia):
-${detalheDias}
+      // Problema principal
+      if(vendas===0) problemaP=`🚨 Nenhuma venda fechada — prioridade máxima de atenção`;
+      else if(conv<20) problemaP=`🚨 Taxa de conversão de ${conv}% — a principal trativa é melhorar o fechamento`;
+      else if(contatos<10) problemaP=`🚨 Baixo volume de prospecção — ${contatos} contatos é insuficiente`;
+      else problemaP=`🎯 Manter consistência e aumentar volume de visitas`;
 
-RESUMO ATUAL:
-${dadosAtuais}
+      // Direcionamento
+      if(vendas===0||conv<20){
+        direcionamento.push(`🎯 Revisar script de abordagem e técnica de fechamento`);
+        direcionamento.push(`🎯 Meta mínima: 1 venda por dia de trabalho`);
+      }
+      if(contatos<15) direcionamento.push(`🎯 Aumentar prospecção para no mínimo 15 contatos/dia`);
+      if(visitas<5) direcionamento.push(`🎯 Trabalhar geração de visitas — indicações, redes sociais, follow-up`);
+      direcionamento.push(`🎯 Registrar boletim diariamente sem falta`);
+      if(temPrev&&vendas<pVendas) direcionamento.push(`🎯 Recuperar volume da semana anterior (${pVendas} vendas)`);
 
-SEMANA ANTERIOR:
-${dadosAnteriores}
-${comparativo?comparativo:''}
+      // Feedback
+      if(vendas===0) feedback=`${author}, precisamos conversar sobre os resultados do período. Zero vendas é um sinal de alerta — quero entender o que está travando o fechamento. Vamos alinhar juntos a abordagem e definir uma meta clara pra próxima semana. Conta comigo!`;
+      else if(conv>=40) feedback=`${author}, boa performance de conversão no período! Você está fechando bem. Agora o desafio é aumentar o volume — mais visitas = mais vendas. Vamos manter esse ritmo e elevar os números!`;
+      else feedback=`${author}, você está gerando movimento — ${visitas} visitas e ${contatos} contatos mostram esforço. Agora precisamos converter mais. Foco no fechamento: cada visita é uma oportunidade. Vamos juntos!`;
 
-FEEDBACK ANTERIOR DO GESTOR: ${feedbackAtual}
-
-Gere a análise em JSON com exatamente este formato (sem markdown, sem texto fora do JSON):
-{
-  "visao_geral": "2-3 bullets com emoji resumindo o cenário atual do funcionário, seja direto e honesto",
-  "cenario_hoje": "frase de 1 linha com 👉 descrevendo o estado atual de forma direta",
-  "destaques": "bullets com ✅ mostrando o que está funcionando bem, com números específicos dos dados",
-  "atencao": "bullets com ⚠️ ou 🚨 apontando problemas reais com base nos números, sem suavizar",
-  "problema_principal": "1 frase direta com 🚨 identificando o maior gargalo de performance",
-  "direcionamento": "3-4 bullets com 🎯 de ações concretas que o gestor deve cobrar imediatamente",
-  "feedback_pronto": "mensagem pronta para o gestor enviar para o funcionário, tom firme mas construtivo, use o nome dele, máximo 5 linhas"
-}`;
-
-  try {
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})
-    });
-    const data=await resp.json();
-    const text=data.content?.map(i=>i.text||'').join('').trim();
-    let p;
-    try{p=JSON.parse(text.replace(/```json|```/g,'').trim());}catch{p=null;}
-
-    if(p){
-      const nl2br=s=>(s||'').split('\n').map(l=>`<div style="margin-bottom:4px">${l}</div>`).join('');
-      aiBox.innerHTML=`<div class="ai-box">
-        <div class="ai-header">
-          <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cbf,#4f8ef7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="font-size:14px;color:#fff"></i></div>
-          <span class="ai-title">Análise IA — ${author}</span>
-          <span style="font-size:11px;color:#7c5cbf;margin-left:auto">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>
-        </div>
-        <div style="background:linear-gradient(135deg,#7c5cbf,#4f8ef7);border-radius:var(--br);padding:10px 14px;margin-bottom:12px">
-          <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px">📊 VISÃO GERAL</div>
-          <div style="font-size:13px;color:#fff;line-height:1.7">${nl2br(p.visao_geral)}</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:10px;font-size:13px;color:var(--t)">${p.cenario_hoje}</div>
-        <div class="ai-section"><div class="ai-lbl">🎯 Destaques</div><div style="font-size:13px;color:#2d1f5e;line-height:1.8">${nl2br(p.destaques)}</div></div>
-        <div class="ai-section"><div class="ai-lbl">⚠️ Pontos de atenção</div><div style="font-size:13px;color:#2d1f5e;line-height:1.8">${nl2br(p.atencao)}</div></div>
-        <div style="background:var(--bgd);border:0.5px solid var(--bd);border-radius:var(--br);padding:8px 12px;margin-bottom:10px">
-          <div class="ai-lbl" style="color:var(--td);margin-bottom:4px">🚨 Principal problema</div>
-          <div style="font-size:13px;color:var(--td);font-weight:500">${p.problema_principal}</div>
-        </div>
-        <div class="ai-section"><div class="ai-lbl">🎯 Direcionamento imediato</div><div style="font-size:13px;color:#2d1f5e;line-height:1.8">${nl2br(p.direcionamento)}</div></div>
-        <div style="background:#fff;border:0.5px solid #c7b8f5;border-radius:var(--br);padding:.75rem 1rem;margin-top:4px">
-          <div class="ai-lbl" style="margin-bottom:6px">💬 Feedback pronto para enviar</div>
-          <div style="font-size:13px;color:#2d1f5e;line-height:1.7;font-style:italic;white-space:pre-line" id="fb-txt-${safeId}">${p.feedback_pronto}</div>
-          <button onclick="usarFeedback('${author}','fb-txt-${safeId}',this)" style="margin-top:8px;font-size:12px;padding:4px 10px;background:#ede9fe;color:#5b3fd4;border-color:#c7b8f5">
-            <i class="ti ti-copy"></i> Salvar como feedback
-          </button>
-        </div>
-      </div>`;
     } else {
-      aiBox.innerHTML=`<div class="ai-box"><div style="font-size:13px;color:#2d1f5e;line-height:1.7;white-space:pre-line">${text}</div></div>`;
+      // MUSCULAÇÃO
+      const treinos=totalTrainings(cur), eng=totalEngagement(cur), dias=cur.length;
+      const equipProb=cur.filter(e=>e.equipment?.trim()).length;
+      const pTreinos=totalTrainings(prev), pEng=totalEngagement(prev);
+      const temPrev=prev.length>0;
+      const mediaTreinos=dias>0?Math.round(treinos/dias):0;
+
+      // Visão geral
+      visao.push(`📋 ${dias} turno${dias!==1?'s':''} registrado${dias!==1?'s':''} ${periodo}`);
+      visao.push(`💪 ${treinos} treino${treinos!==1?'s':''} prescritos · ${eng} de engajamento`);
+      if(mediaTreinos>=4) visao.push(`📈 Média de ${mediaTreinos} treinos/turno — boa produtividade`);
+      else if(mediaTreinos>=2) visao.push(`⚠️ Média de ${mediaTreinos} treinos/turno — abaixo do esperado`);
+      else visao.push(`🚨 Média de ${mediaTreinos} treino${mediaTreinos!==1?'s':''}/turno — produtividade crítica`);
+
+      // Cenário
+      if(treinos===0) cenario=`👉 Nenhum treino prescrito — situação crítica que exige ação imediata`;
+      else if(mediaTreinos>=5) cenario=`👉 Boa entrega de treinos — manter consistência e focar em novos alunos`;
+      else if(mediaTreinos>=3) cenario=`👉 Entrega razoável — potencial para aumentar volume por turno`;
+      else cenario=`👉 Baixa produtividade — volume de treinos muito abaixo do esperado`;
+
+      // Destaques
+      if(treinos>=10) destaques.push(`✅ ${treinos} treinos prescritos — volume sólido no período`);
+      if(mediaTreinos>=4) destaques.push(`✅ Média de ${mediaTreinos} treinos/turno — consistência acima da meta`);
+      if(eng>=10) destaques.push(`✅ Engajamento de +${eng} — boa interação com os alunos`);
+      if(equipProb===0&&dias>0) destaques.push(`✅ Nenhum problema de equipamento registrado`);
+      if(temPrev&&treinos>pTreinos) destaques.push(`✅ Evolução de treinos: ${pTreinos} → ${treinos} (+${treinos-pTreinos})`);
+      if(destaques.length===0) destaques.push(`⚪ Sem destaques positivos expressivos no período`);
+
+      // Atenção
+      if(treinos===0) atencao.push(`🚨 Zero treinos prescritos — resultado inaceitável`);
+      else if(mediaTreinos<2) atencao.push(`🚨 Média de apenas ${mediaTreinos} treino/turno — muito abaixo da meta`);
+      if(eng<5&&dias>0) atencao.push(`⚠️ Engajamento baixo (${eng}) — pouca interação com alunos`);
+      if(equipProb>0) atencao.push(`⚠️ ${equipProb} dia${equipProb>1?'s':''} com problema de equipamento registrado${equipProb>1?'s':''}`);
+      if(temPrev&&treinos<pTreinos) atencao.push(`🚨 Queda na produção: ${pTreinos} → ${treinos} treinos (-${pTreinos-treinos})`);
+      if(temPrev&&eng<pEng) atencao.push(`⚠️ Engajamento caiu: ${pEng} → ${eng}`);
+      if(atencao.length===0) atencao.push(`✅ Sem alertas críticos no período`);
+
+      // Problema principal
+      if(treinos===0) problemaP=`🚨 Nenhum treino prescrito — falta de produção total no período`;
+      else if(mediaTreinos<2) problemaP=`🚨 Média de ${mediaTreinos} treino/turno — produtividade muito abaixo do mínimo esperado (3/turno)`;
+      else if(eng<5) problemaP=`🚨 Engajamento fraco — professor presente mas sem interação real com os alunos`;
+      else problemaP=`🎯 Manter produção e focar em aumentar novos treinos`;
+
+      // Direcionamento
+      if(treinos===0||mediaTreinos<2){
+        direcionamento.push(`🎯 Meta mínima imediata: 3 treinos por turno`);
+        direcionamento.push(`🎯 Identificar alunos sem treino atualizado e abordar ativamente`);
+      }
+      if(eng<8) direcionamento.push(`🎯 Aumentar interação no salão — cumprimentar, corrigir postura, engajar alunos`);
+      direcionamento.push(`🎯 Registrar boletim ao final de cada turno sem exceção`);
+      if(temPrev&&treinos<pTreinos) direcionamento.push(`🎯 Recuperar volume anterior: meta de ${pTreinos} treinos`);
+
+      // Feedback
+      if(treinos===0) feedback=`${author}, precisamos conversar urgente. Nenhum treino prescrito no período é um resultado que não podemos aceitar. Quero entender o que aconteceu e alinhar uma meta clara para os próximos turnos. Conte comigo para ajustar!`;
+      else if(mediaTreinos>=4) feedback=`${author}, boa produção no período! ${treinos} treinos mostram que você está engajado. O próximo passo é manter essa consistência e focar em aumentar ainda mais. Continue assim!`;
+      else feedback=`${author}, você tem potencial para mais. ${treinos} treinos no período está abaixo do esperado. Vamos definir uma meta por turno e trabalhar juntos para aumentar sua produção. Estou aqui para apoiar!`;
     }
-  } catch(e){
-    aiBox.innerHTML=`<div class="ai-box"><p style="font-size:13px;color:var(--td)">Erro ao gerar análise. Verifique sua conexão e tente novamente.</p></div>`;
-  }
+
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    aiBox.innerHTML=`<div class="ai-box">
+      <div class="ai-header">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cbf,#4f8ef7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="font-size:14px;color:#fff"></i></div>
+        <span class="ai-title">Análise — ${author}</span>
+        <span style="font-size:11px;color:#7c5cbf;margin-left:auto">${hora}</span>
+      </div>
+      <div style="background:linear-gradient(135deg,#7c5cbf,#4f8ef7);border-radius:var(--br);padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px;font-weight:500">📊 VISÃO GERAL</div>
+        <div style="font-size:13px;color:#fff;line-height:1.8">${nl2br(visao.join('\n'))}</div>
+      </div>
+      <div style="background:var(--bg2);border-left:3px solid #7c5cbf;border-radius:0 var(--br) var(--br) 0;padding:8px 12px;margin-bottom:10px;font-size:13px;color:var(--t);font-weight:500">${cenario}</div>
+      <div class="ai-section">
+        <div class="ai-lbl">🎯 Destaques</div>
+        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(destaques.join('\n'))}</div>
+      </div>
+      <div class="ai-section">
+        <div class="ai-lbl">⚠️ Pontos de atenção</div>
+        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(atencao.join('\n'))}</div>
+      </div>
+      <div style="background:var(--bgd);border:0.5px solid var(--bd);border-radius:var(--br);padding:8px 12px;margin-bottom:10px">
+        <div class="ai-lbl" style="color:var(--td);margin-bottom:4px">🚨 Principal gargalo</div>
+        <div style="font-size:13px;color:var(--td);font-weight:500">${problemaP}</div>
+      </div>
+      <div class="ai-section">
+        <div class="ai-lbl">🎯 Direcionamento imediato</div>
+        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(direcionamento.join('\n'))}</div>
+      </div>
+      <div style="background:#fff;border:0.5px solid #c7b8f5;border-radius:var(--br);padding:.75rem 1rem;margin-top:4px">
+        <div class="ai-lbl" style="margin-bottom:6px">💬 Feedback pronto para enviar</div>
+        <div style="font-size:13px;color:#2d1f5e;line-height:1.7;font-style:italic" id="fb-txt-${safeId}">${feedback}</div>
+        <button onclick="usarFeedback('${author}','fb-txt-${safeId}',this)" style="margin-top:8px;font-size:12px;padding:4px 10px;background:#ede9fe;color:#5b3fd4;border-color:#c7b8f5">
+          <i class="ti ti-copy"></i> Salvar como feedback
+        </button>
+      </div>
+    </div>`;
+  },600);
 }
 
 function usarFeedback(author,txtId,btn){
