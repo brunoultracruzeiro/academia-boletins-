@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Academia — Boletins</title>
+<title>Ultra Cruzeiro — Boletins</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
 <style>
@@ -55,12 +55,12 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
 .ai-box .ai-title{font-size:13px;font-weight:500;color:#5b3fd4}
 .ai-section{margin-bottom:.75rem}
 .ai-section .ai-lbl{font-size:11px;font-weight:500;color:#7c5cbf;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.ai-section p{font-size:13px;color:#2d1f5e;line-height:1.6}
 .ai-typing{display:flex;gap:4px;align-items:center;padding:.5rem 0}
 .ai-typing span{width:6px;height:6px;border-radius:50%;background:#7c5cbf;animation:blink 1.2s infinite}
 .ai-typing span:nth-child(2){animation-delay:.2s}
 .ai-typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+.unit-badge{font-size:11px;padding:2px 8px;border-radius:var(--br);font-weight:500}
 </style>
 </head>
 <body>
@@ -72,7 +72,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
       <div style="width:56px;height:56px;border-radius:50%;background:var(--bgi);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
         <i class="ti ti-barbell" style="font-size:28px;color:var(--ti)"></i>
       </div>
-      <h1 style="font-size:22px;font-weight:500">Academia — Boletins</h1>
+      <h1 style="font-size:22px;font-weight:500">Ultra Cruzeiro</h1>
       <p style="font-size:13px;color:var(--t2);margin-top:4px">Selecione seu nome para preencher o boletim</p>
     </div>
     <div id="staff-list">
@@ -80,20 +80,20 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
         <i class="ti ti-loader" style="font-size:24px;display:block;margin-bottom:8px"></i>Carregando equipe...
       </div>
     </div>
-    <div class="divider">acesso admin</div>
+    <div class="divider">acesso restrito</div>
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
         <div style="width:38px;height:38px;border-radius:50%;background:#1c1c1a;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="ti ti-shield" style="font-size:18px;color:#fff"></i>
         </div>
         <div>
-          <p style="font-weight:500;font-size:14px;margin:0">Gestor / Admin</p>
-          <p style="font-size:12px;color:var(--t2);margin:0">Relatórios e gerenciamento da equipe</p>
+          <p style="font-weight:500;font-size:14px;margin:0">Área Restrita</p>
+          <p style="font-size:12px;color:var(--t2);margin:0">Gestor geral ou líder da unidade</p>
         </div>
       </div>
-      <div class="field" style="margin-bottom:10px"><label>Senha</label><input id="admin-pass" type="password" placeholder="Digite a senha de admin"/></div>
+      <div class="field" style="margin-bottom:10px"><label>Senha</label><input id="admin-pass" type="password" placeholder="Digite sua senha"/></div>
       <div id="admin-err" class="hidden" style="font-size:13px;color:var(--td);margin-bottom:8px"><i class="ti ti-alert-circle"></i> Senha incorreta.</div>
-      <button onclick="doAdminLogin()" style="width:100%;justify-content:center;background:#1c1c1a;color:#fff;border-color:#1c1c1a"><i class="ti ti-lock-open"></i> Entrar como Admin</button>
+      <button onclick="doAdminLogin()" style="width:100%;justify-content:center;background:#1c1c1a;color:#fff;border-color:#1c1c1a"><i class="ti ti-lock-open"></i> Entrar</button>
     </div>
   </div>
 </div>
@@ -109,7 +109,7 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
     <button onclick="logout()"><i class="ti ti-logout"></i> Sair</button>
   </header>
   <div class="wrap">
-    <div id="t-ok" class="hidden alert" style="background:var(--bgs);color:var(--ts);border:0.5px solid var(--bs)"><i class="ti ti-circle-check"></i> Boletim salvo com sucesso!</div>
+    <div id="t-ok" class="hidden alert" style="background:var(--bgs);color:var(--ts);border:0.5px solid var(--bs)"><i class="ti ti-circle-check"></i> Boletim salvo!</div>
     <div id="t-err" class="hidden alert" style="background:var(--bgd);color:var(--td);border:0.5px solid var(--bd)"><i class="ti ti-alert-circle"></i> Erro ao salvar. Tente novamente.</div>
     <div class="tabs">
       <div class="tab active" onclick="setTeamTab('rec')" id="ttab-rec"><i class="ti ti-phone-call"></i> Recepção</div>
@@ -172,15 +172,24 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
   <header>
     <div style="display:flex;align-items:center;gap:10px">
       <i class="ti ti-barbell" style="font-size:22px;color:var(--ti)"></i>
-      <span style="font-weight:500">Painel Admin</span>
-      <span style="font-size:12px;background:#1c1c1a;color:#fff;padding:2px 8px;border-radius:var(--br)">Admin</span>
+      <span style="font-weight:500" id="g-header-title">Painel</span>
+      <span id="g-role-badge" style="font-size:12px;background:#1c1c1a;color:#fff;padding:2px 8px;border-radius:var(--br)"></span>
     </div>
     <div style="display:flex;gap:8px">
       <button onclick="loadGestor()" style="font-size:13px"><i class="ti ti-refresh"></i> Atualizar</button>
       <button onclick="logout()" style="font-size:13px"><i class="ti ti-logout"></i> Sair</button>
     </div>
   </header>
-  <div class="wrap" style="max-width:900px">
+  <div class="wrap" style="max-width:960px">
+    <!-- Filtro de unidade (só admin vê) -->
+    <div id="unit-filter-bar" class="hidden" style="background:var(--bg);border:0.5px solid rgba(28,28,26,0.15);border-radius:var(--br);padding:.75rem 1rem;margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <i class="ti ti-building" style="color:var(--t2);font-size:16px"></i>
+      <span style="font-size:13px;color:var(--t2)">Unidade:</span>
+      <button class="fbtn active" onclick="setUnitFilter('all',this)">🏠 Todas</button>
+      <button class="fbtn" onclick="setUnitFilter('cruzeiro',this)">Cruzeiro</button>
+      <button class="fbtn" onclick="setUnitFilter('ceilandia',this)">Ceilândia</button>
+      <button class="fbtn" onclick="setUnitFilter('recanto',this)">Recanto</button>
+    </div>
     <div class="filter-bar">
       <i class="ti ti-filter" style="color:var(--t2);font-size:16px"></i>
       <button class="fbtn active" onclick="setFilter('today',this)">Hoje</button>
@@ -211,12 +220,19 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
 </div>
 
 <script>
-const SUPABASE_URL='https://cpebkpckoqypdbqhicmw.supabase.co';
-const SUPABASE_KEY='sb_publishable_ssz6g9ZtGtPTLqk_WbMOGQ_TYipbztR';
-const ADMIN_PASS='Madodo1*';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let currentUser='',currentRole='',allData=[],allFeedbacks={},allStaff=[];
-let currentFilter='today',currentGTab='dash';
+// ── CONFIGURAÇÃO DA UNIDADE ───────────────────────────────────────────────
+const UNIDADE_ID   = 'cruzeiro';      // cruzeiro | ceilandia | recanto
+const UNIDADE_NOME = 'Ultra Cruzeiro';    // nome legível
+const ADMIN_PASS   = 'Madodo1*';     // senha do gestor geral (vê tudo)
+const LIDER_PASS   = 'Lider123*';  // senha do líder (vê só esta unidade)
+
+const SUPABASE_URL = 'https://cpebkpckoqypdbqhicmw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ssz6g9ZtGtPTLqk_WbMOGQ_TYipbztR';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser='', currentRole='', allData=[], allFeedbacks={}, allStaff=[];
+let currentFilter='today', currentGTab='dash', currentUnitFilter='all';
+
 const todayStr=()=>new Date().toISOString().split('T')[0];
 const fmtDate=d=>{if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;};
 const parseDate=s=>{if(!s)return null;const[y,m,d]=s.split('-');return new Date(+y,+m-1,+d);};
@@ -227,25 +243,27 @@ const initials=name=>name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCas
 
 // ── STAFF LIST ────────────────────────────────────────────────────────────
 async function loadStaffList(){
-  const{data,error}=await sb.from('staff').select('*').order('name');
+  const{data}=await sb.from('staff').select('*').eq('unidade',UNIDADE_ID).order('name');
   const list=el('staff-list');
-  if(error||!data||!data.length){list.innerHTML=`<div style="text-align:center;padding:1.5rem;color:var(--t2);font-size:13px;background:var(--bg2);border-radius:var(--brl)">Nenhum funcionário cadastrado.<br>Entre como Admin para adicionar.</div>`;return;}
+  if(!data||!data.length){list.innerHTML=`<div style="text-align:center;padding:1.5rem;color:var(--t2);font-size:13px;background:var(--bg2);border-radius:var(--brl)">Nenhum funcionário cadastrado.<br>Entre como Líder ou Admin para adicionar.</div>`;return;}
   allStaff=data;
   list.innerHTML=data.map(s=>`<button class="staff-btn" onclick="enterTeam('${s.name}','${s.role}')"><div class="avatar-lg">${initials(s.name)}</div><div><div style="font-size:15px;font-weight:500;color:var(--t)">${s.name}</div><div style="font-size:12px;color:var(--t2)">${s.role==='recepcao'?'📞 Recepção':'💪 Musculação'}</div></div><i class="ti ti-chevron-right" style="margin-left:auto;color:var(--t2)"></i></button>`).join('');
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────
 function doAdminLogin(){
-  const pass=el('admin-pass').value;hide('admin-err');
-  if(pass===ADMIN_PASS){enterGestor();}else{el('admin-err').classList.remove('hidden');}
+  const pass=el('admin-pass').value; hide('admin-err');
+  if(pass===ADMIN_PASS){ currentRole='admin'; enterGestor(); }
+  else if(pass===LIDER_PASS){ currentRole='lider'; enterGestor(); }
+  else{ el('admin-err').classList.remove('hidden'); }
 }
 el('admin-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doAdminLogin();});
 
 function enterTeam(name,role){
-  currentUser=name;currentRole='team';hide('pg-login');show('pg-team');
+  currentUser=name; currentRole='team'; hide('pg-login'); show('pg-team');
   el('t-name').textContent='— '+name;
-  el('r-author').value=name;el('m-author').value=name;
-  el('r-date').value=todayStr();el('m-date').value=todayStr();
+  el('r-author').value=name; el('m-author').value=name;
+  el('r-date').value=todayStr(); el('m-date').value=todayStr();
   setTeamTab(role==='musculacao'?'mus':'rec');
 }
 
@@ -254,95 +272,94 @@ function toggleOutro(cb){el('r-outro').classList.toggle('hidden',!cb.checked);}
 
 // ── SAVE ──────────────────────────────────────────────────────────────────
 async function saveRecepcao(){
-  const btn=el('r-btn');btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
-  hide('t-ok');hide('t-err');
+  const btn=el('r-btn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
+  hide('t-ok'); hide('t-err');
   const reasons=[...document.querySelectorAll('.r-reason:checked')].map(c=>c.value);
-  const{error}=await sb.from('boletins').insert({type:'recepcao',author:currentUser,date:el('r-date').value,data:{visits:el('r-visits').value,appointments:el('r-appts').value,contacts:el('r-contacts').value,sales:el('r-sales').value,noSaleReasons:reasons,noSaleOther:el('r-outro').value,notes:el('r-notes').value}});
-  btn.disabled=false;btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
+  const{error}=await sb.from('boletins').insert({type:'recepcao',author:currentUser,date:el('r-date').value,unidade:UNIDADE_ID,data:{visits:el('r-visits').value,appointments:el('r-appts').value,contacts:el('r-contacts').value,sales:el('r-sales').value,noSaleReasons:reasons,noSaleOther:el('r-outro').value,notes:el('r-notes').value}});
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
   if(error){show('t-err');return;}
-  show('t-ok');setTimeout(()=>hide('t-ok'),4000);
+  show('t-ok'); setTimeout(()=>hide('t-ok'),4000);
   ['r-visits','r-appts','r-contacts','r-sales','r-outro','r-notes'].forEach(id=>el(id).value='');
   document.querySelectorAll('.r-reason').forEach(c=>c.checked=false);
   el('r-outro').classList.add('hidden');
 }
 
 async function saveMusculacao(){
-  const btn=el('m-btn');btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
-  hide('t-ok');hide('t-err');
+  const btn=el('m-btn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
+  hide('t-ok'); hide('t-err');
   const countDone=document.querySelector('input[name="countDone"]:checked')?.value||'Sim';
-  const{error}=await sb.from('boletins').insert({type:'musculacao',author:currentUser,date:el('m-date').value,data:{shift:el('m-shift').value,trainings:el('m-trainings').value,newTrainings:el('m-new').value,renewTrainings:el('m-renew').value,engagement:el('m-eng').value,equipment:el('m-equip').value,organization:el('m-org').value,countDone,notes:el('m-notes').value}});
-  btn.disabled=false;btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
+  const{error}=await sb.from('boletins').insert({type:'musculacao',author:currentUser,date:el('m-date').value,unidade:UNIDADE_ID,data:{shift:el('m-shift').value,trainings:el('m-trainings').value,newTrainings:el('m-new').value,renewTrainings:el('m-renew').value,engagement:el('m-eng').value,equipment:el('m-equip').value,organization:el('m-org').value,countDone,notes:el('m-notes').value}});
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
   if(error){show('t-err');return;}
-  show('t-ok');setTimeout(()=>hide('t-ok'),4000);
+  show('t-ok'); setTimeout(()=>hide('t-ok'),4000);
   ['m-trainings','m-new','m-renew','m-eng','m-equip','m-org','m-notes'].forEach(id=>el(id).value='');
 }
 
 // ── GESTOR ────────────────────────────────────────────────────────────────
-async function enterGestor(){currentRole='gestor';hide('pg-login');show('pg-gestor');await loadGestor();}
+async function enterGestor(){
+  hide('pg-login'); show('pg-gestor');
+  el('g-header-title').textContent = currentRole==='admin' ? 'Painel Admin — Todas as Unidades' : `Painel Líder — ${UNIDADE_NOME}`;
+  el('g-role-badge').textContent = currentRole==='admin' ? 'Admin Geral' : 'Líder';
+  if(currentRole==='admin'){ show('unit-filter-bar'); currentUnitFilter='all'; }
+  else { hide('unit-filter-bar'); currentUnitFilter=UNIDADE_ID; }
+  await loadGestor();
+}
 
 async function loadGestor(){
-  show('g-loading');hide('g-content');
+  show('g-loading'); hide('g-content');
   const[bRes,fRes,sRes]=await Promise.all([
     sb.from('boletins').select('*').order('created_at',{ascending:false}),
     sb.from('feedbacks').select('*'),
     sb.from('staff').select('*').order('name')
   ]);
   allData=(bRes.data||[]).map(r=>{
-    // suporta dados salvos tanto em r.data (jsonb) quanto direto nas colunas
     const d=r.data||{};
-    return {
-      id:r.id, author:r.author||d.author, date:r.date||d.date, type:r.type||d.type,
-      // recepcao
-      visits:d.visits||r.visits,
-      appointments:d.appointments||r.appointments,
-      contacts:d.contacts||r.contacts,
-      sales:d.sales||r.sales,
-      noSaleReasons:d.noSaleReasons||[],
-      noSaleOther:d.noSaleOther||'',
-      // musculacao
-      shift:d.shift||r.shift,
-      trainings:d.trainings||r.trainings,
-      newTrainings:d.newTrainings||r.newTrainings,
-      renewTrainings:d.renewTrainings||r.renewTrainings,
-      engagement:d.engagement||r.engagement,
-      equipment:d.equipment||r.equipment,
-      organization:d.organization||r.organization,
-      countDone:d.countDone||r.countDone,
-      notes:d.notes||r.notes,
-    };
+    return{id:r.id,author:r.author,date:r.date,type:r.type,unidade:r.unidade||UNIDADE_ID,
+      visits:d.visits,appointments:d.appointments,contacts:d.contacts,sales:d.sales,noSaleReasons:d.noSaleReasons||[],noSaleOther:d.noSaleOther,
+      shift:d.shift,trainings:d.trainings,newTrainings:d.newTrainings,renewTrainings:d.renewTrainings,engagement:d.engagement,equipment:d.equipment,organization:d.organization,countDone:d.countDone,notes:d.notes};
   });
   allFeedbacks=(fRes.data||[]).reduce((a,r)=>{a[r.author]=r.feedback;return a;},{});
   allStaff=sRes.data||[];
-  hide('g-loading');show('g-content');
+  hide('g-loading'); show('g-content');
+  renderGestor();
+}
+
+function setUnitFilter(u,btn){
+  currentUnitFilter=u;
+  document.querySelectorAll('#unit-filter-bar .fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   renderGestor();
 }
 
 function getFiltered(){
-  const now=new Date(),todayS=todayStr();
-  const startW=new Date(now);startW.setDate(now.getDate()-now.getDay());startW.setHours(0,0,0,0);
+  const now=new Date(), todayS=todayStr();
+  const startW=new Date(now); startW.setDate(now.getDate()-now.getDay()); startW.setHours(0,0,0,0);
   const startM=new Date(now.getFullYear(),now.getMonth(),1);
   return allData.filter(d=>{
-    if(!d.date)return currentFilter==='all';
-    const dt=parseDate(d.date);if(!dt)return false;
-    if(currentFilter==='today')return d.date===todayS;
-    if(currentFilter==='week')return dt>=startW;
-    if(currentFilter==='month')return dt>=startM;
+    if(currentUnitFilter!=='all' && d.unidade!==currentUnitFilter) return false;
+    if(!d.date) return currentFilter==='all';
+    const dt=parseDate(d.date); if(!dt) return false;
+    if(currentFilter==='today') return d.date===todayS;
+    if(currentFilter==='week') return dt>=startW;
+    if(currentFilter==='month') return dt>=startM;
     if(currentFilter==='custom'){const from=parseDate(el('f-from').value),to=parseDate(el('f-to').value);return from&&to&&dt>=from&&dt<=to;}
     return true;
   });
 }
 
-// retorna dados da semana passada para comparativo
 function getPrevWeek(){
   const now=new Date();
-  const startThisW=new Date(now);startThisW.setDate(now.getDate()-now.getDay());startThisW.setHours(0,0,0,0);
-  const startPrevW=new Date(startThisW);startPrevW.setDate(startPrevW.getDate()-7);
-  return allData.filter(d=>{const dt=parseDate(d.date);return dt&&dt>=startPrevW&&dt<startThisW;});
+  const startW=new Date(now); startW.setDate(now.getDate()-now.getDay()); startW.setHours(0,0,0,0);
+  const startPrev=new Date(startW); startPrev.setDate(startPrev.getDate()-7);
+  return allData.filter(d=>{
+    if(currentUnitFilter!=='all' && d.unidade!==currentUnitFilter) return false;
+    const dt=parseDate(d.date); return dt&&dt>=startPrev&&dt<startW;
+  });
 }
 
 function setFilter(f,btn){
   currentFilter=f;
-  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.filter-bar .fbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   el('custom-dates').style.display=f==='custom'?'flex':'none';
   renderGestor();
@@ -354,8 +371,8 @@ function setGTab(t){
 }
 
 function renderGestor(){
-  const filtered=getFiltered(),rData=filtered.filter(d=>d.type==='recepcao'),mData=filtered.filter(d=>d.type==='musculacao');
-  renderDash(filtered,rData,mData);renderDetails('rec',rData);renderDetails('mus',mData);renderConfig();
+  const filtered=getFiltered(), rData=filtered.filter(d=>d.type==='recepcao'), mData=filtered.filter(d=>d.type==='musculacao');
+  renderDash(filtered,rData,mData); renderDetails('rec',rData); renderDetails('mus',mData); renderConfig();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
@@ -366,7 +383,6 @@ const totalTrainings=e=>e.reduce((n,d)=>n+(+d.trainings||0),0);
 const totalEngagement=e=>e.reduce((n,d)=>{const v=String(d.engagement||'').replace('+','');return n+(+v||0);},0);
 const convRate=e=>{const v=totalVisits(e),s=totalSales(e);return v?Math.round(s/v*100):0;};
 function byAuthor(arr){return arr.reduce((a,d)=>{a[d.author]=a[d.author]||[];a[d.author].push(d);return a;},{});}
-
 function scorecard(entries,type){
   if(type==='recepcao'){const cr=convRate(entries),c=totalContacts(entries),s=totalSales(entries);let sc=0;if(cr>=50)sc+=40;else if(cr>=30)sc+=25;else if(cr>=10)sc+=10;if(c>=20)sc+=30;else if(c>=10)sc+=20;else if(c>=5)sc+=10;if(s>=3)sc+=30;else if(s>=1)sc+=15;return Math.min(sc,100);}
   else{const t=totalTrainings(entries),eng=totalEngagement(entries);let sc=0;if(t>=10)sc+=40;else if(t>=5)sc+=25;else if(t>=2)sc+=10;if(eng>10)sc+=35;else if(eng>5)sc+=20;else if(eng>0)sc+=10;const eqOk=entries.filter(e=>!e.equipment?.trim()).length;sc+=Math.round(eqOk/Math.max(entries.length,1)*25);return Math.min(sc,100);}
@@ -374,9 +390,13 @@ function scorecard(entries,type){
 function scoreBadge(s){if(s>=80)return{label:'Excelente',bg:'var(--bgs)',color:'var(--ts)'};if(s>=60)return{label:'Bom',bg:'var(--bgi)',color:'var(--ti)'};if(s>=40)return{label:'Regular',bg:'var(--bgw)',color:'var(--tw)'};return{label:'Atenção',bg:'var(--bgd)',color:'var(--td)'};}
 function barColor(s){if(s>=80)return'#22c55e';if(s>=60)return'#3b82f6';if(s>=40)return'#f59e0b';return'#ef4444';}
 
+const UNIT_LABEL={'cruzeiro':'🏠 Cruzeiro','ceilandia':'🏙️ Ceilândia','recanto':'🌳 Recanto'};
+
 // ── DASH ──────────────────────────────────────────────────────────────────
 function renderDash(filtered,rData,mData){
-  const rBy=byAuthor(rData),mBy=byAuthor(mData);
+  const rBy=byAuthor(rData), mBy=byAuthor(mData);
+  // se admin vendo tudo, mostrar por unidade
+  const mostrarUnidade = currentRole==='admin' && currentUnitFilter==='all';
   let html=`<div class="stat-grid">
     <div class="stat"><div class="lbl"><i class="ti ti-file-text"></i> Boletins</div><div class="val">${filtered.length}</div></div>
     <div class="stat"><div class="lbl" style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> Vendas</div><div class="val">${totalSales(rData)}</div></div>
@@ -385,25 +405,37 @@ function renderDash(filtered,rData,mData){
     <div class="stat"><div class="lbl" style="color:var(--tw)"><i class="ti ti-barbell"></i> Treinos</div><div class="val">${totalTrainings(mData)}</div></div>
     <div class="stat"><div class="lbl" style="color:var(--td)"><i class="ti ti-flame"></i> Engajamento</div><div class="val">+${totalEngagement(mData)}</div></div>
   </div>`;
-  if(Object.keys(rBy).length){html+=`<div class="section-title"><i class="ti ti-phone-call"></i> Recepção</div>`;for(const[a,e]of Object.entries(rBy))html+=personCard(a,e,'recepcao');}
-  if(Object.keys(mBy).length){html+=`<div class="section-title" style="margin-top:1.5rem"><i class="ti ti-barbell"></i> Musculação</div>`;for(const[a,e]of Object.entries(mBy))html+=personCard(a,e,'musculacao');}
-  if(!filtered.length)html=`<div style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-inbox" style="font-size:40px;display:block;margin-bottom:.75rem"></i>Nenhum boletim no período.</div>`;
+
+  if(Object.keys(rBy).length){
+    html+=`<div class="section-title"><i class="ti ti-phone-call"></i> Recepção</div>`;
+    for(const[a,e]of Object.entries(rBy)){
+      const unitLabel=mostrarUnidade&&e[0]?.unidade?`<span style="font-size:11px;background:var(--bg2);color:var(--t2);padding:1px 6px;border-radius:4px;margin-left:4px">${UNIT_LABEL[e[0].unidade]||e[0].unidade}</span>`:'';
+      html+=personCard(a,e,'recepcao',unitLabel);
+    }
+  }
+  if(Object.keys(mBy).length){
+    html+=`<div class="section-title" style="margin-top:1.5rem"><i class="ti ti-barbell"></i> Musculação</div>`;
+    for(const[a,e]of Object.entries(mBy)){
+      const unitLabel=mostrarUnidade&&e[0]?.unidade?`<span style="font-size:11px;background:var(--bg2);color:var(--t2);padding:1px 6px;border-radius:4px;margin-left:4px">${UNIT_LABEL[e[0].unidade]||e[0].unidade}</span>`:'';
+      html+=personCard(a,e,'musculacao',unitLabel);
+    }
+  }
+  if(!filtered.length) html=`<div style="text-align:center;padding:3rem;color:var(--t2)"><i class="ti ti-inbox" style="font-size:40px;display:block;margin-bottom:.75rem"></i>Nenhum boletim no período.</div>`;
   el('gpg-dash').innerHTML=html;
 }
 
-// ── PERSON CARD ───────────────────────────────────────────────────────────
-function personCard(author,entries,type){
+function personCard(author,entries,type,unitLabel=''){
   const sc=scorecard(entries,type),badge=scoreBadge(sc),fb=allFeedbacks[author]||'';
   const safeId=author.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
   const stats=type==='recepcao'
     ?`<div class="mini-grid"><div class="mini"><div class="lbl">Vendas</div><div class="val">${totalSales(entries)}</div></div><div class="mini"><div class="lbl">Visitas</div><div class="val">${totalVisits(entries)}</div></div><div class="mini"><div class="lbl">Contatos</div><div class="val">${totalContacts(entries)}</div></div><div class="mini"><div class="lbl">Conversão</div><div class="val">${convRate(entries)}%</div></div></div>`
     :`<div class="mini-grid"><div class="mini"><div class="lbl">Treinos</div><div class="val">${totalTrainings(entries)}</div></div><div class="mini"><div class="lbl">Engajamento</div><div class="val">+${totalEngagement(entries)}</div></div><div class="mini"><div class="lbl">Boletins</div><div class="val">${entries.length}</div></div></div>`;
   const fbHtml=fb?`<div style="background:var(--bgi);border-radius:var(--br);padding:.625rem .875rem;margin-bottom:8px"><p style="font-size:12px;color:var(--ti);margin:0 0 3px;font-weight:500"><i class="ti ti-message-circle"></i> Feedback salvo</p><p style="font-size:13px;color:var(--ti);margin:0">${fb}</p></div>`:'';
-  return`<div class="person" id="pc-${safeId}">
+  return`<div class="person">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="avatar">${initials(author)}</div>
-        <div><p style="font-weight:500;font-size:15px;margin:0">${author}</p>
+        <div><p style="font-weight:500;font-size:15px;margin:0">${author}${unitLabel}</p>
         <p style="font-size:12px;color:var(--t2);margin:0">${entries.length} boletim${entries.length!==1?'s':''} · ${type==='recepcao'?'Consultor':'Musculação'}</p></div>
       </div>
       <span class="badge" style="background:${badge.bg};color:${badge.color}">${badge.label}</span>
@@ -415,147 +447,81 @@ function personCard(author,entries,type){
         <span style="font-size:13px;font-weight:500;min-width:30px">${sc}</span>
       </div>
     </div>
-    ${stats}
-    ${fbHtml}
+    ${stats}${fbHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button onclick="openFeedback('${author}')" style="font-size:13px;padding:5px 12px"><i class="ti ti-message-plus"></i> ${fb?'Editar feedback':'Dar feedback'}</button>
-      <button onclick="runAI('${safeId}','${author}','${type}')" style="font-size:13px;padding:5px 12px;background:linear-gradient(135deg,#ede9fe,#f0f4ff);color:#5b3fd4;border-color:#c7b8f5"><i class="ti ti-sparkles"></i> Análise IA</button>
+      <button onclick="runAI('${safeId}','${author}','${type}')" style="font-size:13px;padding:5px 12px;background:linear-gradient(135deg,#ede9fe,#f0f4ff);color:#5b3fd4;border-color:#c7b8f5"><i class="ti ti-sparkles"></i> Análise</button>
     </div>
     <div id="ai-${safeId}" class="hidden"></div>
   </div>`;
 }
 
-// ── ANÁLISE LOCAL (sem API externa) ───────────────────────────────────────
+// ── ANÁLISE LOCAL ─────────────────────────────────────────────────────────
 function runAI(safeId,author,type){
   const aiBox=el('ai-'+safeId);
   aiBox.classList.remove('hidden');
   aiBox.innerHTML=`<div class="ai-box"><div class="ai-header"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c5cbf,#4f8ef7);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-sparkles" style="font-size:14px;color:#fff"></i></div><span class="ai-title">Analisando ${author}...</span></div><div class="ai-typing"><span></span><span></span><span></span></div></div>`;
-
   setTimeout(()=>{
-    const filtered=getFiltered();
-    const prevWeek=getPrevWeek();
+    const filtered=getFiltered(), prev=getPrevWeek();
     const cur=filtered.filter(d=>d.author===author&&d.type===type);
-    const prev=prevWeek.filter(d=>d.author===author&&d.type===type);
-    const periodo=currentFilter==='today'?'hoje':currentFilter==='week'?'esta semana':currentFilter==='month'?'este mês':'no período';
+    const prv=prev.filter(d=>d.author===author&&d.type===type);
     const nl2br=s=>s.split('\n').map(l=>`<div style="margin-bottom:5px">${l}</div>`).join('');
-
-    let visao=[], destaques=[], atencao=[], problemaP='', direcionamento=[], feedback='', cenario='';
-
+    let visao=[],destaques=[],atencao=[],problemaP='',direcionamento=[],feedback='',cenario='';
     if(type==='recepcao'){
-      const vendas=totalSales(cur), visitas=totalVisits(cur), contatos=totalContacts(cur), conv=convRate(cur);
-      const pVendas=totalSales(prev), pVisitas=totalVisits(prev), pContatos=totalContacts(prev), pConv=convRate(prev);
-      const temPrev=prev.length>0;
-
-      // Visão geral
-      visao.push(`📋 ${cur.length} boletim${cur.length!==1?'s':''} registrado${cur.length!==1?'s':''} ${periodo}`);
+      const vendas=totalSales(cur),visitas=totalVisits(cur),contatos=totalContacts(cur),conv=convRate(cur);
+      const pV=totalSales(prv),pVi=totalVisits(prv),pC=totalContacts(prv),pCv=convRate(prv),temP=prv.length>0;
+      visao.push(`📋 ${cur.length} boletim${cur.length!==1?'s':''} registrado${cur.length!==1?'s':''}`);
       visao.push(`💰 ${vendas} venda${vendas!==1?'s':''} · ${visitas} visita${visitas!==1?'s':''} · ${contatos} contato${contatos!==1?'s':''}`);
-      if(conv>=40) visao.push(`📈 Conversão de ${conv}% — acima da média`);
-      else if(conv>0) visao.push(`📉 Conversão de ${conv}% — abaixo do esperado`);
-      else visao.push(`⚠️ Nenhuma venda convertida no período`);
-
-      // Cenário
-      if(vendas===0) cenario=`👉 Período sem vendas — atenção imediata necessária`;
-      else if(conv>=50) cenario=`👉 Boa performance de conversão — manter ritmo e aumentar volume`;
-      else if(conv>=30) cenario=`👉 Conversão razoável — potencial para melhorar com mais visitas`;
-      else cenario=`👉 Volume de atividade presente, mas conversão precisa evoluir`;
-
-      // Destaques
-      if(vendas>0) destaques.push(`✅ ${vendas} venda${vendas!==1?'s':''} realizada${vendas!==1?'s':''} no período`);
-      if(contatos>=15) destaques.push(`✅ Alto volume de contatos: ${contatos} — boa prospecção`);
-      if(conv>=40) destaques.push(`✅ Taxa de conversão de ${conv}% — acima da média esperada`);
-      if(visitas>=5) destaques.push(`✅ ${visitas} visitas recebidas — bom fluxo de atendimento`);
-      if(temPrev && vendas>pVendas) destaques.push(`✅ Crescimento de vendas: ${pVendas} → ${vendas} (+${vendas-pVendas})`);
-      if(destaques.length===0) destaques.push(`⚪ Sem destaques positivos expressivos no período`);
-
-      // Atenção
-      if(vendas===0) atencao.push(`🚨 Zero vendas no período — resultado crítico`);
-      if(conv<20&&visitas>0) atencao.push(`⚠️ Conversão de ${conv}% está muito abaixo — revisar abordagem`);
-      if(contatos<10) atencao.push(`⚠️ Apenas ${contatos} contatos — prospecção fraca`);
-      if(visitas<3) atencao.push(`⚠️ Apenas ${visitas} visitas — verificar fluxo de leads`);
-      if(temPrev&&vendas<pVendas) atencao.push(`🚨 Queda de vendas: ${pVendas} → ${vendas} (${vendas-pVendas})`);
-      if(temPrev&&conv<pConv) atencao.push(`⚠️ Conversão caiu: ${pConv}% → ${conv}%`);
-      if(atencao.length===0) atencao.push(`✅ Sem alertas críticos no período`);
-
-      // Problema principal
-      if(vendas===0) problemaP=`🚨 Nenhuma venda fechada — prioridade máxima de atenção`;
-      else if(conv<20) problemaP=`🚨 Taxa de conversão de ${conv}% — a principal trativa é melhorar o fechamento`;
-      else if(contatos<10) problemaP=`🚨 Baixo volume de prospecção — ${contatos} contatos é insuficiente`;
-      else problemaP=`🎯 Manter consistência e aumentar volume de visitas`;
-
-      // Direcionamento
-      if(vendas===0||conv<20){
-        direcionamento.push(`🎯 Revisar script de abordagem e técnica de fechamento`);
-        direcionamento.push(`🎯 Meta mínima: 1 venda por dia de trabalho`);
-      }
-      if(contatos<15) direcionamento.push(`🎯 Aumentar prospecção para no mínimo 15 contatos/dia`);
-      if(visitas<5) direcionamento.push(`🎯 Trabalhar geração de visitas — indicações, redes sociais, follow-up`);
-      direcionamento.push(`🎯 Registrar boletim diariamente sem falta`);
-      if(temPrev&&vendas<pVendas) direcionamento.push(`🎯 Recuperar volume da semana anterior (${pVendas} vendas)`);
-
-      // Feedback
-      if(vendas===0) feedback=`${author}, precisamos conversar sobre os resultados do período. Zero vendas é um sinal de alerta — quero entender o que está travando o fechamento. Vamos alinhar juntos a abordagem e definir uma meta clara pra próxima semana. Conta comigo!`;
-      else if(conv>=40) feedback=`${author}, boa performance de conversão no período! Você está fechando bem. Agora o desafio é aumentar o volume — mais visitas = mais vendas. Vamos manter esse ritmo e elevar os números!`;
-      else feedback=`${author}, você está gerando movimento — ${visitas} visitas e ${contatos} contatos mostram esforço. Agora precisamos converter mais. Foco no fechamento: cada visita é uma oportunidade. Vamos juntos!`;
-
+      visao.push(conv>=40?`📈 Conversão ${conv}% — acima da média`:conv>0?`📉 Conversão ${conv}% — abaixo do esperado`:`⚠️ Nenhuma venda convertida`);
+      cenario=vendas===0?`👉 Período sem vendas — atenção imediata necessária`:conv>=50?`👉 Boa performance — manter ritmo e aumentar volume`:conv>=30?`👉 Conversão razoável — potencial para melhorar`:` 👉 Volume presente, mas conversão precisa evoluir`;
+      if(vendas>0)destaques.push(`✅ ${vendas} venda${vendas!==1?'s':''} realizadas`);
+      if(contatos>=15)destaques.push(`✅ Alto volume de contatos: ${contatos}`);
+      if(conv>=40)destaques.push(`✅ Conversão de ${conv}% — acima da média`);
+      if(visitas>=5)destaques.push(`✅ ${visitas} visitas — bom fluxo`);
+      if(temP&&vendas>pV)destaques.push(`✅ Crescimento: ${pV} → ${vendas} vendas (+${vendas-pV})`);
+      if(!destaques.length)destaques.push(`⚪ Sem destaques positivos no período`);
+      if(vendas===0)atencao.push(`🚨 Zero vendas — resultado crítico`);
+      if(conv<20&&visitas>0)atencao.push(`⚠️ Conversão de ${conv}% — revisar abordagem`);
+      if(contatos<10)atencao.push(`⚠️ Apenas ${contatos} contatos — prospecção fraca`);
+      if(visitas<3)atencao.push(`⚠️ Apenas ${visitas} visitas — verificar fluxo de leads`);
+      if(temP&&vendas<pV)atencao.push(`🚨 Queda de vendas: ${pV} → ${vendas}`);
+      if(temP&&conv<pCv)atencao.push(`⚠️ Conversão caiu: ${pCv}% → ${conv}%`);
+      if(!atencao.length)atencao.push(`✅ Sem alertas críticos`);
+      problemaP=vendas===0?`🚨 Nenhuma venda fechada — prioridade máxima`:conv<20?`🚨 Conversão de ${conv}% — melhorar o fechamento`:contatos<10?`🚨 Baixa prospecção — ${contatos} contatos insuficiente`:`🎯 Manter consistência e aumentar volume`;
+      if(vendas===0||conv<20){direcionamento.push(`🎯 Revisar script e técnica de fechamento`);direcionamento.push(`🎯 Meta mínima: 1 venda por dia`);}
+      if(contatos<15)direcionamento.push(`🎯 Mínimo 15 contatos/dia`);
+      if(visitas<5)direcionamento.push(`🎯 Trabalhar geração de visitas — indicações e follow-up`);
+      direcionamento.push(`🎯 Registrar boletim diariamente`);
+      feedback=vendas===0?`${author}, precisamos conversar sobre os resultados. Zero vendas é um alerta — vamos alinhar a abordagem e definir uma meta clara. Conta comigo!`:conv>=40?`${author}, boa conversão! Agora o desafio é aumentar o volume — mais visitas = mais vendas. Vamos manter o ritmo!`:`${author}, você está gerando movimento. Agora precisamos converter mais. Foco no fechamento — cada visita é uma oportunidade!`;
     } else {
-      // MUSCULAÇÃO
-      const treinos=totalTrainings(cur), eng=totalEngagement(cur), dias=cur.length;
+      const treinos=totalTrainings(cur),eng=totalEngagement(cur),dias=cur.length;
       const equipProb=cur.filter(e=>e.equipment?.trim()).length;
-      const pTreinos=totalTrainings(prev), pEng=totalEngagement(prev);
-      const temPrev=prev.length>0;
-      const mediaTreinos=dias>0?Math.round(treinos/dias):0;
-
-      // Visão geral
-      visao.push(`📋 ${dias} turno${dias!==1?'s':''} registrado${dias!==1?'s':''} ${periodo}`);
-      visao.push(`💪 ${treinos} treino${treinos!==1?'s':''} prescritos · ${eng} de engajamento`);
-      if(mediaTreinos>=4) visao.push(`📈 Média de ${mediaTreinos} treinos/turno — boa produtividade`);
-      else if(mediaTreinos>=2) visao.push(`⚠️ Média de ${mediaTreinos} treinos/turno — abaixo do esperado`);
-      else visao.push(`🚨 Média de ${mediaTreinos} treino${mediaTreinos!==1?'s':''}/turno — produtividade crítica`);
-
-      // Cenário
-      if(treinos===0) cenario=`👉 Nenhum treino prescrito — situação crítica que exige ação imediata`;
-      else if(mediaTreinos>=5) cenario=`👉 Boa entrega de treinos — manter consistência e focar em novos alunos`;
-      else if(mediaTreinos>=3) cenario=`👉 Entrega razoável — potencial para aumentar volume por turno`;
-      else cenario=`👉 Baixa produtividade — volume de treinos muito abaixo do esperado`;
-
-      // Destaques
-      if(treinos>=10) destaques.push(`✅ ${treinos} treinos prescritos — volume sólido no período`);
-      if(mediaTreinos>=4) destaques.push(`✅ Média de ${mediaTreinos} treinos/turno — consistência acima da meta`);
-      if(eng>=10) destaques.push(`✅ Engajamento de +${eng} — boa interação com os alunos`);
-      if(equipProb===0&&dias>0) destaques.push(`✅ Nenhum problema de equipamento registrado`);
-      if(temPrev&&treinos>pTreinos) destaques.push(`✅ Evolução de treinos: ${pTreinos} → ${treinos} (+${treinos-pTreinos})`);
-      if(destaques.length===0) destaques.push(`⚪ Sem destaques positivos expressivos no período`);
-
-      // Atenção
-      if(treinos===0) atencao.push(`🚨 Zero treinos prescritos — resultado inaceitável`);
-      else if(mediaTreinos<2) atencao.push(`🚨 Média de apenas ${mediaTreinos} treino/turno — muito abaixo da meta`);
-      if(eng<5&&dias>0) atencao.push(`⚠️ Engajamento baixo (${eng}) — pouca interação com alunos`);
-      if(equipProb>0) atencao.push(`⚠️ ${equipProb} dia${equipProb>1?'s':''} com problema de equipamento registrado${equipProb>1?'s':''}`);
-      if(temPrev&&treinos<pTreinos) atencao.push(`🚨 Queda na produção: ${pTreinos} → ${treinos} treinos (-${pTreinos-treinos})`);
-      if(temPrev&&eng<pEng) atencao.push(`⚠️ Engajamento caiu: ${pEng} → ${eng}`);
-      if(atencao.length===0) atencao.push(`✅ Sem alertas críticos no período`);
-
-      // Problema principal
-      if(treinos===0) problemaP=`🚨 Nenhum treino prescrito — falta de produção total no período`;
-      else if(mediaTreinos<2) problemaP=`🚨 Média de ${mediaTreinos} treino/turno — produtividade muito abaixo do mínimo esperado (3/turno)`;
-      else if(eng<5) problemaP=`🚨 Engajamento fraco — professor presente mas sem interação real com os alunos`;
-      else problemaP=`🎯 Manter produção e focar em aumentar novos treinos`;
-
-      // Direcionamento
-      if(treinos===0||mediaTreinos<2){
-        direcionamento.push(`🎯 Meta mínima imediata: 3 treinos por turno`);
-        direcionamento.push(`🎯 Identificar alunos sem treino atualizado e abordar ativamente`);
-      }
-      if(eng<8) direcionamento.push(`🎯 Aumentar interação no salão — cumprimentar, corrigir postura, engajar alunos`);
-      direcionamento.push(`🎯 Registrar boletim ao final de cada turno sem exceção`);
-      if(temPrev&&treinos<pTreinos) direcionamento.push(`🎯 Recuperar volume anterior: meta de ${pTreinos} treinos`);
-
-      // Feedback
-      if(treinos===0) feedback=`${author}, precisamos conversar urgente. Nenhum treino prescrito no período é um resultado que não podemos aceitar. Quero entender o que aconteceu e alinhar uma meta clara para os próximos turnos. Conte comigo para ajustar!`;
-      else if(mediaTreinos>=4) feedback=`${author}, boa produção no período! ${treinos} treinos mostram que você está engajado. O próximo passo é manter essa consistência e focar em aumentar ainda mais. Continue assim!`;
-      else feedback=`${author}, você tem potencial para mais. ${treinos} treinos no período está abaixo do esperado. Vamos definir uma meta por turno e trabalhar juntos para aumentar sua produção. Estou aqui para apoiar!`;
+      const pT=totalTrainings(prv),pE=totalEngagement(prv),temP=prv.length>0;
+      const media=dias>0?Math.round(treinos/dias):0;
+      visao.push(`📋 ${dias} turno${dias!==1?'s':''} registrado${dias!==1?'s':''}`);
+      visao.push(`💪 ${treinos} treino${treinos!==1?'s':''} prescritos · engajamento +${eng}`);
+      visao.push(media>=4?`📈 Média ${media} treinos/turno — boa produtividade`:media>=2?`⚠️ Média ${media} treinos/turno — abaixo do esperado`:`🚨 Média ${media} treino/turno — produtividade crítica`);
+      cenario=treinos===0?`👉 Nenhum treino prescrito — situação crítica`:media>=5?`👉 Boa entrega — manter consistência`:media>=3?`👉 Entrega razoável — aumentar volume por turno`:`👉 Baixa produtividade — muito abaixo do esperado`;
+      if(treinos>=10)destaques.push(`✅ ${treinos} treinos prescritos — volume sólido`);
+      if(media>=4)destaques.push(`✅ Média ${media} treinos/turno — consistente`);
+      if(eng>=10)destaques.push(`✅ Engajamento +${eng} — boa interação`);
+      if(equipProb===0&&dias>0)destaques.push(`✅ Nenhum problema de equipamento`);
+      if(temP&&treinos>pT)destaques.push(`✅ Evolução: ${pT} → ${treinos} treinos (+${treinos-pT})`);
+      if(!destaques.length)destaques.push(`⚪ Sem destaques positivos no período`);
+      if(treinos===0)atencao.push(`🚨 Zero treinos — resultado inaceitável`);
+      else if(media<2)atencao.push(`🚨 Média ${media} treino/turno — muito abaixo da meta`);
+      if(eng<5&&dias>0)atencao.push(`⚠️ Engajamento baixo (${eng}) — pouca interação`);
+      if(equipProb>0)atencao.push(`⚠️ ${equipProb} dia${equipProb>1?'s':''} com problema de equipamento`);
+      if(temP&&treinos<pT)atencao.push(`🚨 Queda: ${pT} → ${treinos} treinos (-${pT-treinos})`);
+      if(temP&&eng<pE)atencao.push(`⚠️ Engajamento caiu: ${pE} → ${eng}`);
+      if(!atencao.length)atencao.push(`✅ Sem alertas críticos`);
+      problemaP=treinos===0?`🚨 Nenhum treino prescrito — falta de produção total`:media<2?`🚨 Média ${media} treino/turno — abaixo do mínimo (meta: 3/turno)`:eng<5?`🚨 Engajamento fraco — professor sem interação real com alunos`:`🎯 Manter produção e focar em novos treinos`;
+      if(treinos===0||media<2){direcionamento.push(`🎯 Meta mínima: 3 treinos por turno`);direcionamento.push(`🎯 Identificar alunos sem treino atualizado`);}
+      if(eng<8)direcionamento.push(`🎯 Aumentar interação — cumprimentar, corrigir, engajar`);
+      direcionamento.push(`🎯 Registrar boletim ao final de cada turno`);
+      if(temP&&treinos<pT)direcionamento.push(`🎯 Recuperar volume: meta ${pT} treinos`);
+      feedback=treinos===0?`${author}, precisamos conversar urgente. Nenhum treino prescrito não é aceitável. Vamos alinhar uma meta clara para os próximos turnos!`:media>=4?`${author}, boa produção! ${treinos} treinos mostram engajamento. Vamos manter e aumentar!`:`${author}, você tem potencial para mais. ${treinos} treinos está abaixo do esperado. Vamos definir metas por turno juntos!`;
     }
-
     const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     aiBox.innerHTML=`<div class="ai-box">
       <div class="ai-header">
@@ -568,53 +534,25 @@ function runAI(safeId,author,type){
         <div style="font-size:13px;color:#fff;line-height:1.8">${nl2br(visao.join('\n'))}</div>
       </div>
       <div style="background:var(--bg2);border-left:3px solid #7c5cbf;border-radius:0 var(--br) var(--br) 0;padding:8px 12px;margin-bottom:10px;font-size:13px;color:var(--t);font-weight:500">${cenario}</div>
-      <div class="ai-section">
-        <div class="ai-lbl">🎯 Destaques</div>
-        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(destaques.join('\n'))}</div>
-      </div>
-      <div class="ai-section">
-        <div class="ai-lbl">⚠️ Pontos de atenção</div>
-        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(atencao.join('\n'))}</div>
-      </div>
+      <div class="ai-section"><div class="ai-lbl">🎯 Destaques</div><div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(destaques.join('\n'))}</div></div>
+      <div class="ai-section"><div class="ai-lbl">⚠️ Pontos de atenção</div><div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(atencao.join('\n'))}</div></div>
       <div style="background:var(--bgd);border:0.5px solid var(--bd);border-radius:var(--br);padding:8px 12px;margin-bottom:10px">
         <div class="ai-lbl" style="color:var(--td);margin-bottom:4px">🚨 Principal gargalo</div>
         <div style="font-size:13px;color:var(--td);font-weight:500">${problemaP}</div>
       </div>
-      <div class="ai-section">
-        <div class="ai-lbl">🎯 Direcionamento imediato</div>
-        <div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(direcionamento.join('\n'))}</div>
-      </div>
+      <div class="ai-section"><div class="ai-lbl">🎯 Direcionamento imediato</div><div style="font-size:13px;color:#2d1f5e;line-height:1.9">${nl2br(direcionamento.join('\n'))}</div></div>
       <div style="background:#fff;border:0.5px solid #c7b8f5;border-radius:var(--br);padding:.75rem 1rem;margin-top:4px">
         <div class="ai-lbl" style="margin-bottom:6px">💬 Feedback pronto para enviar</div>
         <div style="font-size:13px;color:#2d1f5e;line-height:1.7;font-style:italic" id="fb-txt-${safeId}">${feedback}</div>
-        <button onclick="usarFeedback('${author}','fb-txt-${safeId}',this)" style="margin-top:8px;font-size:12px;padding:4px 10px;background:#ede9fe;color:#5b3fd4;border-color:#c7b8f5">
-          <i class="ti ti-copy"></i> Salvar como feedback
-        </button>
+        <button onclick="usarFeedback('${author}','fb-txt-${safeId}',this)" style="margin-top:8px;font-size:12px;padding:4px 10px;background:#ede9fe;color:#5b3fd4;border-color:#c7b8f5"><i class="ti ti-copy"></i> Salvar como feedback</button>
       </div>
     </div>`;
   },600);
 }
 
-function usarFeedback(author,txtId,btn){
-  const txt=el(txtId)?.textContent||'';
-  if(!txt)return;
-  saveFeedback(author,txt);
-  btn.innerHTML='<i class="ti ti-check"></i> Salvo!';
-  btn.disabled=true;
-}
-
-// ── FEEDBACK ──────────────────────────────────────────────────────────────
-function openFeedback(author){
-  const existing=allFeedbacks[author]||'';
-  const txt=prompt(`Feedback para ${author}:`,existing);
-  if(txt===null)return;
-  saveFeedback(author,txt);
-}
-async function saveFeedback(author,feedback){
-  await sb.from('feedbacks').upsert({author,feedback,updated_at:new Date().toISOString()},{onConflict:'author'});
-  allFeedbacks[author]=feedback;
-  renderGestor();
-}
+function usarFeedback(author,txtId,btn){const txt=el(txtId)?.textContent||'';if(!txt)return;saveFeedback(author,txt);btn.innerHTML='<i class="ti ti-check"></i> Salvo!';btn.disabled=true;}
+function openFeedback(author){const e=allFeedbacks[author]||'';const t=prompt(`Feedback para ${author}:`,e);if(t===null)return;saveFeedback(author,t);}
+async function saveFeedback(author,feedback){await sb.from('feedbacks').upsert({author,feedback,updated_at:new Date().toISOString()},{onConflict:'author'});allFeedbacks[author]=feedback;renderGestor();}
 
 // ── DETAILS ───────────────────────────────────────────────────────────────
 function renderDetails(tab,entries){
@@ -635,11 +573,20 @@ function renderDetails(tab,entries){
 
 // ── CONFIG ────────────────────────────────────────────────────────────────
 function renderConfig(){
-  const rows=allStaff.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(s.name)}</div><div><p style="font-size:14px;font-weight:500;margin:0">${s.name}</p><p style="font-size:12px;color:var(--t2);margin:0">${s.role==='recepcao'?'📞 Recepção':'💪 Musculação'}</p></div></div><button onclick="removeStaff(${s.id})" style="font-size:13px;color:var(--td);border-color:var(--bd);padding:4px 10px"><i class="ti ti-trash"></i></button></div>`).join('');
-  el('gpg-cfg').innerHTML=`<div class="card"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Equipe cadastrada</h2><p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Funcionários aqui aparecem na tela inicial para preenchimento do boletim.</p>${rows||'<p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Nenhum funcionário cadastrado ainda.</p>'}<div style="border-top:0.5px solid rgba(28,28,26,0.1);padding-top:1rem;margin-top:.5rem"><p style="font-size:13px;font-weight:500;margin-bottom:.75rem">Adicionar funcionário</p><div class="grid2" style="margin-bottom:10px"><div class="field"><label>Nome</label><input id="s-name" placeholder="Nome completo"/></div><div class="field"><label>Setor</label><select id="s-role"><option value="recepcao">Recepção</option><option value="musculacao">Musculação</option></select></div></div><button onclick="addStaff()" style="background:var(--bgi);color:var(--ti);border-color:var(--bi)"><i class="ti ti-user-plus"></i> Adicionar</button></div></div>`;
+  const staffDaUnidade = currentRole==='admin' ? allStaff : allStaff.filter(s=>s.unidade===UNIDADE_ID);
+  const rows=staffDaUnidade.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:10px 14px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(s.name)}</div><div><p style="font-size:14px;font-weight:500;margin:0">${s.name}</p><p style="font-size:12px;color:var(--t2);margin:0">${s.role==='recepcao'?'📞 Recepção':'💪 Musculação'} · ${UNIT_LABEL[s.unidade]||s.unidade}</p></div></div><button onclick="removeStaff(${s.id})" style="font-size:13px;color:var(--td);border-color:var(--bd);padding:4px 10px"><i class="ti ti-trash"></i></button></div>`).join('');
+  const unitSelect = currentRole==='admin'
+    ? `<div class="field"><label>Unidade</label><select id="s-unidade"><option value="cruzeiro">Cruzeiro</option><option value="ceilandia">Ceilândia</option><option value="recanto">Recanto</option></select></div>`
+    : `<input type="hidden" id="s-unidade" value="${UNIDADE_ID}"/>`;
+  el('gpg-cfg').innerHTML=`<div class="card"><h2 style="font-size:15px;font-weight:500;margin-bottom:1rem;display:flex;align-items:center;gap:6px"><i class="ti ti-users"></i> Equipe cadastrada</h2><p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Funcionários aqui aparecem na tela inicial de cada unidade.</p>${rows||'<p style="font-size:13px;color:var(--t2);margin-bottom:1rem">Nenhum funcionário cadastrado ainda.</p>'}<div style="border-top:0.5px solid rgba(28,28,26,0.1);padding-top:1rem;margin-top:.5rem"><p style="font-size:13px;font-weight:500;margin-bottom:.75rem">Adicionar funcionário</p><div class="grid2" style="margin-bottom:10px"><div class="field"><label>Nome</label><input id="s-name" placeholder="Nome completo"/></div><div class="field"><label>Setor</label><select id="s-role"><option value="recepcao">Recepção</option><option value="musculacao">Musculação</option></select></div>${unitSelect}</div><button onclick="addStaff()" style="background:var(--bgi);color:var(--ti);border-color:var(--bi)"><i class="ti ti-user-plus"></i> Adicionar</button></div></div>`;
 }
 
-async function addStaff(){const name=el('s-name')?.value.trim(),role=el('s-role')?.value;if(!name)return;const{data,error}=await sb.from('staff').insert({name,role}).select().single();if(!error){allStaff.push(data);renderConfig();loadStaffList();}}
+async function addStaff(){
+  const name=el('s-name')?.value.trim(), role=el('s-role')?.value, unidade=el('s-unidade')?.value||UNIDADE_ID;
+  if(!name)return;
+  const{data,error}=await sb.from('staff').insert({name,role,unidade}).select().single();
+  if(!error){allStaff.push(data);renderConfig();loadStaffList();}
+}
 async function removeStaff(id){await sb.from('staff').delete().eq('id',id);allStaff=allStaff.filter(s=>s.id!==id);renderConfig();loadStaffList();}
 
 function logout(){currentUser='';currentRole='';['pg-team','pg-gestor'].forEach(hide);show('pg-login');el('admin-pass').value='';hide('admin-err');loadStaffList();}
