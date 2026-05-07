@@ -196,7 +196,11 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
       <button class="fbtn" onclick="setFilter('week',this)">Esta semana</button>
       <button class="fbtn" onclick="setFilter('month',this)">Este mês</button>
       <button class="fbtn" onclick="setFilter('all',this)">Tudo</button>
-      <button class="fbtn" onclick="setFilter('custom',this)">Personalizado</button>
+      <button class="fbtn" onclick="setFilter('day',this)">📅 Dia específico</button>
+      <button class="fbtn" onclick="setFilter('custom',this)">Período</button>
+      <span id="day-date" style="display:none;align-items:center;gap:8px">
+        <input type="date" id="f-day" style="width:160px;font-size:13px" onchange="renderGestor()"/>
+      </span>
       <span id="custom-dates" style="display:none;align-items:center;gap:8px">
         <input type="date" id="f-from" style="width:140px;font-size:13px" onchange="renderGestor()"/>
         <span style="font-size:13px;color:var(--t2)">até</span>
@@ -342,6 +346,7 @@ function getFiltered(){
     if(!d.date) return currentFilter==='all';
     const dt=parseDate(d.date); if(!dt) return false;
     if(currentFilter==='today') return d.date===todayS;
+    if(currentFilter==='day') return d.date===(el('f-day')?.value||todayS);
     if(currentFilter==='week') return dt>=startW;
     if(currentFilter==='month') return dt>=startM;
     if(currentFilter==='custom'){const from=parseDate(el('f-from').value),to=parseDate(el('f-to').value);return from&&to&&dt>=from&&dt<=to;}
@@ -364,6 +369,8 @@ function setFilter(f,btn){
   document.querySelectorAll('.filter-bar .fbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   el('custom-dates').style.display=f==='custom'?'flex':'none';
+  el('day-date').style.display=f==='day'?'flex':'none';
+  if(f==='day' && !el('f-day').value) el('f-day').value=todayStr();
   renderGestor();
 }
 
@@ -553,6 +560,14 @@ function runAI(safeId,author,type){
   },600);
 }
 
+async function deleteBoletim(id){
+  if(!confirm('Excluir este boletim? Esta ação não pode ser desfeita.')) return;
+  const{error}=await sb.from('boletins').delete().eq('id',id);
+  if(error){alert('Erro ao excluir. Tente novamente.');return;}
+  allData=allData.filter(d=>d.id!==id);
+  renderGestor();
+}
+
 function usarFeedback(author,txtId,btn){const txt=el(txtId)?.textContent||'';if(!txt)return;saveFeedback(author,txt);btn.innerHTML='<i class="ti ti-check"></i> Salvo!';btn.disabled=true;}
 function openFeedback(author){const e=allFeedbacks[author]||'';const t=prompt(`Feedback para ${author}:`,e);if(t===null)return;saveFeedback(author,t);}
 async function saveFeedback(author,feedback){await sb.from('feedbacks').upsert({author,feedback,updated_at:new Date().toISOString()},{onConflict:'author'});allFeedbacks[author]=feedback;renderGestor();}
@@ -568,7 +583,13 @@ function renderDetails(tab,entries){
       const rows=type==='recepcao'
         ?`<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)"><span><i class="ti ti-door-enter"></i> Visitas: <strong>${e.visits||0}</strong></span><span><i class="ti ti-address-book"></i> Contatos: <strong>${e.contacts||0}</strong></span><span style="color:var(--ts)"><i class="ti ti-currency-dollar"></i> Vendas: <strong>${e.sales?.split('\n').filter(l=>l.trim()).length||0}</strong></span></div>`
         :`<div style="display:flex;flex-wrap:wrap;gap:12px;color:var(--t2)"><span><i class="ti ti-barbell"></i> Treinos: <strong>${e.trainings||0}</strong></span><span><i class="ti ti-flame"></i> Engajamento: <strong>${e.engagement||0}</strong></span>${e.equipment?`<span style="color:var(--tw)"><i class="ti ti-tool"></i> ${e.equipment}</span>`:''}</div>`;
-      html+=`<div class="entry"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:500">${fmtDate(e.date)}</span>${type==='musculacao'?`<span style="font-size:12px;background:var(--bgw);color:var(--tw);padding:1px 8px;border-radius:var(--br)">${e.shift}</span>`:''}</div>${rows}${e.notes?`<p style="margin:5px 0 0;color:var(--t2);font-style:italic">${e.notes}</p>`:''}</div>`;
+      html+=`<div class="entry"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:500">${fmtDate(e.date)}</span>
+          ${type==='musculacao'?`<span style="font-size:12px;background:var(--bgw);color:var(--tw);padding:1px 8px;border-radius:var(--br)">${e.shift}</span>`:''}
+        </div>
+        ${currentRole==='admin'?`<button onclick="deleteBoletim(${e.id})" style="font-size:11px;padding:2px 8px;color:var(--td);border-color:var(--bd);background:var(--bgd)"><i class="ti ti-trash"></i> Excluir</button>`:''}
+      </div>${rows}${e.notes?`<p style="margin:5px 0 0;color:var(--t2);font-style:italic">${e.notes}</p>`:''}</div>`;
     }
   }
   el('gpg-'+tab).innerHTML=html;
