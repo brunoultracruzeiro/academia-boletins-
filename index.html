@@ -722,77 +722,38 @@ async function processImport(){
   // Monta lista de funcionários cadastrados para a IA usar como referência
   const staffList = allStaff.map(s=>`- ${s.name} | setor: ${s.role==='recepcao'?'recepcao':'musculacao'} | unidade: ${s.unidade}`).join('\n');
 
-  const prompt = `Você é um assistente que extrai dados de relatórios de academias.
+  const prompt = `Você é um assistente que extrai dados de relatórios de academias brasileiras.
 
-FUNCIONÁRIOS CADASTRADOS:
+FUNCIONÁRIOS CADASTRADOS (use estes nomes EXATAMENTE no JSON):
 ${staffList}
 
 RELATÓRIO A PROCESSAR:
 ${text}
 
-DATA PADRÃO (use se o relatório não mencionar data): ${date}
-UNIDADE PADRÃO (use se não estiver claro): ${unidade}
+DATA PADRÃO (use SOMENTE se o relatório não mencionar nenhuma data): ${date}
+UNIDADE PADRÃO (use SOMENTE se não estiver claro no relatório): ${unidade}
 
-Sua tarefa: identificar cada funcionário mencionado no relatório (use correspondência flexível de nomes — primeiro nome, apelido, variações) e extrair os dados corretos para cada um.
+=== REGRAS CRÍTICAS ===
 
-Para funcionários de RECEPÇÃO, extraia:
-- visits (número de visitas)
-- appointments (agendamentos)
-- contacts (contatos feitos em listas)
-- sales (vendas: coloque uma linha por venda com o nome/código, ou "Importado" se não tiver detalhe)
-- noSaleReasons (array de strings com motivos de não fechamento, se mencionado)
-- notes (observações livres)
+1. DATA: O relatório pode conter datas no formato DD/MM/YYYY (ex: 04/05/2026). Converta para YYYY-MM-DD (ex: 2026-05-04). Cada bloco de funcionário pode ter sua própria data — use a data do bloco, não uma data global.
 
-Para funcionários de MUSCULAÇÃO, extraia:
-- shift (turno: "Manhã", "Tarde" ou "Noite")
-- trainings (total de treinos prescritos)
-- newTrainings (novos treinos)
-- renewTrainings (renovações)
-- engagement (engajamento como número, ex: 12 para "+12")
-- equipment (problemas com equipamentos, string vazia se nenhum)
-- organization (organização do salão, ex: "Sim" ou descrição)
-- countDone ("Sim" ou "Não")
-- notes (observações livres)
+2. NOME: O relatório usa rótulos como "Consultor:", "Professor:", "Nome:" seguidos do nome. Faça correspondência flexível (primeiro nome, parcial, sem acento) com a lista de cadastrados e use o nome EXATO do cadastro no JSON.
 
-Responda APENAS com um JSON válido, sem markdown, sem explicações, neste formato exato:
-{
-  "boletins": [
-    {
-      "author": "Nome Exato Conforme Cadastro",
-      "type": "recepcao",
-      "date": "2026-05-11",
-      "unidade": "cruzeiro",
-      "data": {
-        "visits": "5",
-        "appointments": "2",
-        "contacts": "20",
-        "sales": "Cliente A\nCliente B",
-        "noSaleReasons": [],
-        "noSaleOther": "",
-        "notes": ""
-      }
-    },
-    {
-      "author": "Nome Exato Conforme Cadastro",
-      "type": "musculacao",
-      "date": "2026-05-11",
-      "unidade": "cruzeiro",
-      "data": {
-        "shift": "Manhã",
-        "trainings": "7",
-        "newTrainings": "3",
-        "renewTrainings": "4",
-        "engagement": "12",
-        "equipment": "",
-        "organization": "Sim",
-        "countDone": "Sim",
-        "notes": ""
-      }
-    }
-  ]
-}
+3. VENDAS: Se o relatório diz "Vendas: 5" (apenas número), gere 5 linhas "Importado" separadas por \n no campo sales. Se tiver nomes dos clientes, use-os diretamente.
 
-Use o nome EXATAMENTE como está cadastrado na lista de funcionários. Se um nome do relatório não corresponder a nenhum cadastrado, ignore-o. Todos os valores numéricos devem ser strings.`;
+4. LIGAÇÕES / SOCIAL SELLING / STORY / outros contatos: Some todos esses valores no campo "contacts". Campos não mapeados em outro lugar vão para "notes" como texto livre (ex: "Social Selling: 0 | Story: 0").
+
+5. SETOR: Use o setor do cadastro (recepcao ou musculacao). Relatório com campos de vendas/visitas = recepcao. Relatório com treinos/engajamento = musculacao.
+
+6. MÚLTIPLOS BLOCOS: O relatório pode ter vários funcionários. Gere um objeto no array para cada um.
+
+Para RECEPÇÃO extraia: visits, appointments, contacts (ligações+listas+social somados), sales (string, uma venda por linha), noSaleReasons (array), noSaleOther (string), notes (campos extras).
+Para MUSCULAÇÃO extraia: shift (Manhã/Tarde/Noite), trainings, newTrainings, renewTrainings, engagement (número inteiro sem o +), equipment (vazio se sem problemas), organization, countDone (Sim/Não), notes.
+
+Responda APENAS com JSON válido puro, sem markdown, sem texto extra:
+{"boletins":[{"author":"Nome Exato Cadastro","type":"recepcao","date":"2026-05-04","unidade":"cruzeiro","data":{"visits":"5","appointments":"1","contacts":"7","sales":"Importado\nImportado\nImportado\nImportado\nImportado","noSaleReasons":[],"noSaleOther":"","notes":"Social Selling: 0 | Story: 0"}}]}
+
+Se um nome não corresponder a nenhum cadastrado, ignore-o. Todos os valores numéricos devem ser strings.`;
 
   let boletinsParaSalvar = [];
   try {
