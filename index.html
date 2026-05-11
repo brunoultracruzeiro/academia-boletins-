@@ -716,46 +716,131 @@ async function processImport(){
   const unidade=el('imp-unidade')?.value||UNIDADE_ID;
   if(!text){alert('Cole o relatório primeiro!');return;}
   const btn=el('imp-btn');
-  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Processando...';
-  el('imp-result').innerHTML='';
-  const linhas=text.split('\n').filter(l=>l.trim());
-  const boletinsParaSalvar=[];
-  const resultados=[];
-  for(const linha of linhas){
-    const staffMatch=allStaff.find(s=>{
-      const nome=s.name.toLowerCase();
-      const primeiroNome=nome.split(' ')[0];
-      return linha.toLowerCase().includes(primeiroNome)||linha.toLowerCase().includes(nome);
-    });
-    if(!staffMatch) continue;
-    const l=linha.toLowerCase();
-    if(staffMatch.role==='recepcao'){
-      const vendas=extrairNumero(l,['venda','vendas','fechou','fechamento'])||0;
-      const visitas=extrairNumero(l,['visita','visitas'])||0;
-      const contatos=extrairNumero(l,['contato','contatos','lista','listas'])||0;
-      const agendamentos=extrairNumero(l,['agendamento','agendamentos'])||0;
-      boletinsParaSalvar.push({type:'recepcao',author:staffMatch.name,date,unidade,data:{visits:String(visitas),appointments:String(agendamentos),contacts:String(contatos),sales:vendas>0?Array(vendas).fill('Importado').join('\n'):'',noSaleReasons:[],noSaleOther:'',notes:'Importado de relatório antigo'}});
-      resultados.push({nome:staffMatch.name,tipo:'recepcao',dados:`${vendas} vendas · ${visitas} visitas · ${contatos} contatos`,ok:true});
-    } else {
-      const treinos=extrairNumero(l,['treino','treinos','prescrito','prescritos'])||0;
-      const novos=extrairNumero(l,['novo','novos','primeiro','primeiros'])||0;
-      const eng=extrairNumero(l,['engajamento','engaj','+'])||0;
-      const turno=l.includes('tarde')?'Tarde':l.includes('noite')?'Noite':'Manhã';
-      const equip=l.includes('esteira')||l.includes('equipamento')||l.includes('quebr')?linha.substring(linha.toLowerCase().indexOf(l.includes('esteira')?'esteira':l.includes('equipamento')?'equipamento':'quebr')):'';
-      boletinsParaSalvar.push({type:'musculacao',author:staffMatch.name,date,unidade,data:{shift:turno,trainings:String(treinos),newTrainings:String(novos),renewTrainings:'0',engagement:String(eng),equipment:equip,organization:'Sim',countDone:'Sim',notes:'Importado de relatório antigo'}});
-      resultados.push({nome:staffMatch.name,tipo:'musculacao',dados:`${treinos} treinos · engaj ${eng} · ${turno}`,ok:true});
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Interpretando com IA...';
+  el('imp-result').innerHTML=`<div style="text-align:center;padding:1.5rem;color:var(--t2);font-size:13px"><i class="ti ti-sparkles" style="font-size:22px;display:block;margin-bottom:8px;color:#7c5cbf"></i>A IA está lendo o relatório e distribuindo os dados...</div>`;
+
+  // Monta lista de funcionários cadastrados para a IA usar como referência
+  const staffList = allStaff.map(s=>`- ${s.name} | setor: ${s.role==='recepcao'?'recepcao':'musculacao'} | unidade: ${s.unidade}`).join('\n');
+
+  const prompt = `Você é um assistente que extrai dados de relatórios de academias.
+
+FUNCIONÁRIOS CADASTRADOS:
+${staffList}
+
+RELATÓRIO A PROCESSAR:
+${text}
+
+DATA PADRÃO (use se o relatório não mencionar data): ${date}
+UNIDADE PADRÃO (use se não estiver claro): ${unidade}
+
+Sua tarefa: identificar cada funcionário mencionado no relatório (use correspondência flexível de nomes — primeiro nome, apelido, variações) e extrair os dados corretos para cada um.
+
+Para funcionários de RECEPÇÃO, extraia:
+- visits (número de visitas)
+- appointments (agendamentos)
+- contacts (contatos feitos em listas)
+- sales (vendas: coloque uma linha por venda com o nome/código, ou "Importado" se não tiver detalhe)
+- noSaleReasons (array de strings com motivos de não fechamento, se mencionado)
+- notes (observações livres)
+
+Para funcionários de MUSCULAÇÃO, extraia:
+- shift (turno: "Manhã", "Tarde" ou "Noite")
+- trainings (total de treinos prescritos)
+- newTrainings (novos treinos)
+- renewTrainings (renovações)
+- engagement (engajamento como número, ex: 12 para "+12")
+- equipment (problemas com equipamentos, string vazia se nenhum)
+- organization (organização do salão, ex: "Sim" ou descrição)
+- countDone ("Sim" ou "Não")
+- notes (observações livres)
+
+Responda APENAS com um JSON válido, sem markdown, sem explicações, neste formato exato:
+{
+  "boletins": [
+    {
+      "author": "Nome Exato Conforme Cadastro",
+      "type": "recepcao",
+      "date": "2026-05-11",
+      "unidade": "cruzeiro",
+      "data": {
+        "visits": "5",
+        "appointments": "2",
+        "contacts": "20",
+        "sales": "Cliente A\nCliente B",
+        "noSaleReasons": [],
+        "noSaleOther": "",
+        "notes": ""
+      }
+    },
+    {
+      "author": "Nome Exato Conforme Cadastro",
+      "type": "musculacao",
+      "date": "2026-05-11",
+      "unidade": "cruzeiro",
+      "data": {
+        "shift": "Manhã",
+        "trainings": "7",
+        "newTrainings": "3",
+        "renewTrainings": "4",
+        "engagement": "12",
+        "equipment": "",
+        "organization": "Sim",
+        "countDone": "Sim",
+        "notes": ""
+      }
     }
-  }
-  let salvos=0, erros=0;
-  for(const b of boletinsParaSalvar){
-    const{error}=await sb.from('boletins').insert(b);
-    if(error) erros++; else salvos++;
-  }
-  btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
-  if(resultados.length===0){
-    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgw);color:var(--tw);border:0.5px solid var(--bw)"><i class="ti ti-alert-circle"></i> Nenhum funcionário identificado. Verifique se os nomes do relatório batem com os cadastrados.</div>`;
+  ]
+}
+
+Use o nome EXATAMENTE como está cadastrado na lista de funcionários. Se um nome do relatório não corresponder a nenhum cadastrado, ignore-o. Todos os valores numéricos devem ser strings.`;
+
+  let boletinsParaSalvar = [];
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const apiData = await resp.json();
+    const rawText = (apiData.content || []).map(c => c.text || '').join('');
+    const clean = rawText.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    boletinsParaSalvar = parsed.boletins || [];
+  } catch(err) {
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
+    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgd);color:var(--td);border:0.5px solid var(--bd)"><i class="ti ti-alert-circle"></i> Erro ao interpretar o relatório. Tente novamente.</div>`;
     return;
   }
+
+  if(!boletinsParaSalvar.length){
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
+    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgw);color:var(--tw);border:0.5px solid var(--bw)"><i class="ti ti-alert-circle"></i> Nenhum funcionário identificado. Verifique se os nomes no relatório correspondem aos cadastrados.</div>`;
+    return;
+  }
+
+  // Salvar no Supabase
+  let salvos=0, erros=0;
+  const resultados=[];
+  for(const b of boletinsParaSalvar){
+    const{error}=await sb.from('boletins').insert(b);
+    if(error){ erros++; }
+    else{
+      salvos++;
+      if(b.type==='recepcao'){
+        const vendas=b.data.sales?.split('\n').filter(l=>l.trim()).length||0;
+        resultados.push({nome:b.author,tipo:'recepcao',dados:`${vendas} vendas · ${b.data.visits||0} visitas · ${b.data.contacts||0} contatos`});
+      } else {
+        resultados.push({nome:b.author,tipo:'musculacao',dados:`${b.data.trainings||0} treinos · engaj +${b.data.engagement||0} · ${b.data.shift||'Manhã'}`});
+      }
+    }
+  }
+
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
+
   const rows=resultados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(r.nome)}</div><div><p style="font-size:13px;font-weight:500;margin:0">${r.nome}</p><p style="font-size:12px;color:var(--t2);margin:0">${r.dados}</p></div></div><span style="font-size:12px;background:var(--bgs);color:var(--ts);padding:2px 8px;border-radius:var(--br)">✅ Salvo</span></div>`).join('');
   el('imp-result').innerHTML=`<div style="background:var(--bgs);border:0.5px solid var(--bs);border-radius:var(--br);padding:.75rem 1rem;margin-bottom:12px;color:var(--ts);font-size:13px"><i class="ti ti-circle-check"></i> ${salvos} boletim${salvos!==1?'s':''} importado${salvos!==1?'s':''} com sucesso${erros>0?` · ${erros} erro(s)`:''}.
 </div>${rows}<button onclick="loadGestor();setGTab('dash')" style="margin-top:8px;font-size:13px"><i class="ti ti-layout-dashboard"></i> Ver no dashboard</button>`;
