@@ -722,49 +722,79 @@ async function processImport(){
   // ── Parser local robusto — entende o formato de modelo com emojis e rótulos ──
   function normalizar(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 
+  // Extrai valor numérico de uma linha que contenha qualquer das palavras-chave
   function extrairValor(bloco, chaves){
-    for(const chave of chaves){
-      // procura linha com o rótulo: "Chave: valor" ou "Chave:valor"
-      const regex = new RegExp(chave + '[^\\d\\n]*([\\+\\-]?\\d+)', 'i');
-      const m = bloco.match(regex);
-      if(m) return parseInt(m[1].replace('+',''))||0;
+    const linhas = bloco.split('\n');
+    for(const linha of linhas){
+      const lNorm = normalizar(linha);
+      for(const chave of chaves){
+        // remove emojis da chave para comparação
+        const chaveSimples = chave.replace(/[^a-z0-9çãáàéêíóõúü\s\[\]\?\*\+\-]/gi,'').trim();
+        if(!chaveSimples) continue;
+        try {
+          const re = new RegExp(chaveSimples, 'i');
+          if(re.test(lNorm)){
+            const nums = linha.match(/[\+\-]?\d+/g);
+            if(nums) return parseInt(nums[nums.length-1].replace('+',''))||0;
+          }
+        } catch(e){}
+      }
     }
     return 0;
   }
 
+  // Extrai texto após rótulo em qualquer linha
   function extrairTexto(bloco, chaves){
-    for(const chave of chaves){
-      const regex = new RegExp(chave + '[:\\s]+([^\\n]+)', 'i');
-      const m = bloco.match(regex);
+    const linhas = bloco.split('\n');
+    for(const linha of linhas){
+      const lNorm = normalizar(linha);
+      for(const chave of chaves){
+        const chaveSimples = chave.replace(/[^a-z0-9çãáàéêíóõúü\s\[\]\?\*\+\-]/gi,'').trim();
+        if(!chaveSimples) continue;
+        try {
+          const re = new RegExp(chaveSimples + '[\\s:：]+(.+)', 'i');
+          const m = lNorm.match(re);
+          if(m) return m[1].trim();
+        } catch(e){}
+      }
+    }
+    return '';
+  }
+
+  // Extrai nome do funcionário — lê a linha que contém "Consultor:", "Professor:", etc.
+  function extrairNome(bloco){
+    const linhas = bloco.split('\n');
+    for(const linha of linhas){
+      // Remove emojis e espaços do início
+      const limpa = linha.replace(/^[\s\p{Emoji}\u{1F000}-\u{1FFFF}✅❌📷📞💰👤📅👣🔥💪]+/gu,'').trim();
+      const m = limpa.match(/^(?:consultor|professor|funcion[aá]rio|colaborador|nome|instrutor|estagiário?|estagi[aá]rio?)\s*[:：]\s*(.+)/i);
       if(m) return m[1].trim();
+      // fallback: linha original
+      const m2 = linha.match(/(?:consultor|professor|funcion[aá]rio|colaborador|nome|instrutor|estagi[aá]rio?)\s*[:：]\s*(.+)/i);
+      if(m2) return m2[1].trim();
     }
     return '';
   }
 
   function extrairData(bloco){
-    // Formato DD/MM/YYYY
     const m = bloco.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-    // Formato YYYY-MM-DD
     const m2 = bloco.match(/(\d{4})-(\d{2})-(\d{2})/);
     if(m2) return m2[0];
     return defaultDate;
   }
 
   function encontrarFuncionario(nome){
+    if(!nome) return null;
     const nNome = normalizar(nome);
-    // Tentativa 1: match exato normalizado
     let match = allStaff.find(s => normalizar(s.name) === nNome);
     if(match) return match;
-    // Tentativa 2: o nome do relatório está contido no cadastro ou vice-versa
     match = allStaff.find(s => normalizar(s.name).includes(nNome) || nNome.includes(normalizar(s.name)));
     if(match) return match;
-    // Tentativa 3: primeiro nome bate
     const primeiroNome = nNome.split(/\s+/)[0];
     if(primeiroNome.length >= 3)
       match = allStaff.find(s => normalizar(s.name).split(/\s+/)[0] === primeiroNome);
     if(match) return match;
-    // Tentativa 4: qualquer palavra do nome (>=4 chars) está no cadastro
     const palavras = nNome.split(/\s+/).filter(p=>p.length>=4);
     for(const p of palavras){
       match = allStaff.find(s => normalizar(s.name).includes(p));
@@ -808,7 +838,7 @@ async function processImport(){
     if(!bloco.trim()) continue;
 
     // Extrai nome do funcionário
-    const nomeRaw = extrairTexto(bloco, ['👤\\s*consultor','👤\\s*professor','👤\\s*funcion[aá]rio','👤\\s*colaborador','👤\\s*nome','consultor','professor','funcion[aá]rio','colaborador','nome']);
+    const nomeRaw = extrairNome(bloco);
     if(!nomeRaw){ naoBateram.push('(bloco sem nome identificado)'); continue; }
 
     const staff = encontrarFuncionario(nomeRaw);
@@ -818,15 +848,15 @@ async function processImport(){
     const unidadeBloco = unidade; // usa a unidade selecionada no campo
 
     if(staff.role === 'recepcao'){
-      const visitas    = extrairValor(bloco, ['visitas?','👣\\s*visitas?']);
-      const agendamentos = extrairValor(bloco, ['agendamentos?','📅\\s*agendamentos?']);
-      const ligacoes   = extrairValor(bloco, ['liga[çc][oõ]es?','📞\\s*liga[çc][oõ]es?']);
-      const social     = extrairValor(bloco, ['social\\s*sell?ing','📷\\s*social']);
-      const story      = extrairValor(bloco, ['story','📷\\s*story']);
-      const vendas     = extrairValor(bloco, ['vendas?','💰\\s*vendas?']);
-      const contacts   = ligacoes + social; // soma ligações + social selling
-      const salesLines = vendas > 0 ? Array(vendas).fill('Importado').join('\n') : '';
-      const notesExtra = [];
+      const visitas      = extrairValor(bloco, ['visitas']);
+      const agendamentos = extrairValor(bloco, ['agendamentos']);
+      const ligacoes     = extrairValor(bloco, ['ligacoes','ligações','ligaçoes','ligacoes']);
+      const social       = extrairValor(bloco, ['social']);
+      const story        = extrairValor(bloco, ['story']);
+      const vendas       = extrairValor(bloco, ['vendas']);
+      const contacts     = ligacoes + social;
+      const salesLines   = vendas > 0 ? Array(vendas).fill('Importado').join('\n') : '';
+      const notesExtra   = [];
       if(story > 0) notesExtra.push(`Story: ${story}`);
       if(social > 0) notesExtra.push(`Social Selling: ${social}`);
 
