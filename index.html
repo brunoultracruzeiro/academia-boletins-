@@ -712,75 +712,162 @@ Amanda - 2 treinos, 1 novo treino..."></textarea>
 
 async function processImport(){
   const text=el('imp-text')?.value.trim();
-  const date=el('imp-date')?.value||todayStr();
+  const defaultDate=el('imp-date')?.value||todayStr();
   const unidade=el('imp-unidade')?.value||UNIDADE_ID;
   if(!text){alert('Cole o relatório primeiro!');return;}
   const btn=el('imp-btn');
-  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Interpretando com IA...';
-  el('imp-result').innerHTML=`<div style="text-align:center;padding:1.5rem;color:var(--t2);font-size:13px"><i class="ti ti-sparkles" style="font-size:22px;display:block;margin-bottom:8px;color:#7c5cbf"></i>A IA está lendo o relatório e distribuindo os dados...</div>`;
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Processando...';
+  el('imp-result').innerHTML='';
 
-  // Monta lista de funcionários cadastrados para a IA usar como referência
-  const staffList = allStaff.map(s=>`- ${s.name} | setor: ${s.role==='recepcao'?'recepcao':'musculacao'} | unidade: ${s.unidade}`).join('\n');
+  // ── Parser local robusto — entende o formato de modelo com emojis e rótulos ──
+  function normalizar(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
 
-  const prompt = `Você é um assistente que extrai dados de relatórios de academias brasileiras.
-
-FUNCIONÁRIOS CADASTRADOS (use estes nomes EXATAMENTE no JSON):
-${staffList}
-
-RELATÓRIO A PROCESSAR:
-${text}
-
-DATA PADRÃO (use SOMENTE se o relatório não mencionar nenhuma data): ${date}
-UNIDADE PADRÃO (use SOMENTE se não estiver claro no relatório): ${unidade}
-
-=== REGRAS CRÍTICAS ===
-
-1. DATA: O relatório pode conter datas no formato DD/MM/YYYY (ex: 04/05/2026). Converta para YYYY-MM-DD (ex: 2026-05-04). Cada bloco de funcionário pode ter sua própria data — use a data do bloco, não uma data global.
-
-2. NOME: O relatório usa rótulos como "Consultor:", "Professor:", "Nome:" seguidos do nome. Faça correspondência flexível (primeiro nome, parcial, sem acento) com a lista de cadastrados e use o nome EXATO do cadastro no JSON.
-
-3. VENDAS: Se o relatório diz "Vendas: 5" (apenas número), gere 5 linhas "Importado" separadas por \n no campo sales. Se tiver nomes dos clientes, use-os diretamente.
-
-4. LIGAÇÕES / SOCIAL SELLING / STORY / outros contatos: Some todos esses valores no campo "contacts". Campos não mapeados em outro lugar vão para "notes" como texto livre (ex: "Social Selling: 0 | Story: 0").
-
-5. SETOR: Use o setor do cadastro (recepcao ou musculacao). Relatório com campos de vendas/visitas = recepcao. Relatório com treinos/engajamento = musculacao.
-
-6. MÚLTIPLOS BLOCOS: O relatório pode ter vários funcionários. Gere um objeto no array para cada um.
-
-Para RECEPÇÃO extraia: visits, appointments, contacts (ligações+listas+social somados), sales (string, uma venda por linha), noSaleReasons (array), noSaleOther (string), notes (campos extras).
-Para MUSCULAÇÃO extraia: shift (Manhã/Tarde/Noite), trainings, newTrainings, renewTrainings, engagement (número inteiro sem o +), equipment (vazio se sem problemas), organization, countDone (Sim/Não), notes.
-
-Responda APENAS com JSON válido puro, sem markdown, sem texto extra:
-{"boletins":[{"author":"Nome Exato Cadastro","type":"recepcao","date":"2026-05-04","unidade":"cruzeiro","data":{"visits":"5","appointments":"1","contacts":"7","sales":"Importado\nImportado\nImportado\nImportado\nImportado","noSaleReasons":[],"noSaleOther":"","notes":"Social Selling: 0 | Story: 0"}}]}
-
-Se um nome não corresponder a nenhum cadastrado, ignore-o. Todos os valores numéricos devem ser strings.`;
-
-  let boletinsParaSalvar = [];
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const apiData = await resp.json();
-    const rawText = (apiData.content || []).map(c => c.text || '').join('');
-    const clean = rawText.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    boletinsParaSalvar = parsed.boletins || [];
-  } catch(err) {
-    btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
-    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgd);color:var(--td);border:0.5px solid var(--bd)"><i class="ti ti-alert-circle"></i> Erro ao interpretar o relatório. Tente novamente.</div>`;
-    return;
+  function extrairValor(bloco, chaves){
+    for(const chave of chaves){
+      // procura linha com o rótulo: "Chave: valor" ou "Chave:valor"
+      const regex = new RegExp(chave + '[^\\d\\n]*([\\+\\-]?\\d+)', 'i');
+      const m = bloco.match(regex);
+      if(m) return parseInt(m[1].replace('+',''))||0;
+    }
+    return 0;
   }
 
-  if(!boletinsParaSalvar.length){
-    btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
-    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgw);color:var(--tw);border:0.5px solid var(--bw)"><i class="ti ti-alert-circle"></i> Nenhum funcionário identificado. Verifique se os nomes no relatório correspondem aos cadastrados.</div>`;
-    return;
+  function extrairTexto(bloco, chaves){
+    for(const chave of chaves){
+      const regex = new RegExp(chave + '[:\\s]+([^\\n]+)', 'i');
+      const m = bloco.match(regex);
+      if(m) return m[1].trim();
+    }
+    return '';
+  }
+
+  function extrairData(bloco){
+    // Formato DD/MM/YYYY
+    const m = bloco.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    // Formato YYYY-MM-DD
+    const m2 = bloco.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(m2) return m2[0];
+    return defaultDate;
+  }
+
+  function encontrarFuncionario(nome){
+    const nNome = normalizar(nome);
+    // Tentativa 1: match exato normalizado
+    let match = allStaff.find(s => normalizar(s.name) === nNome);
+    if(match) return match;
+    // Tentativa 2: o nome do relatório está contido no cadastro ou vice-versa
+    match = allStaff.find(s => normalizar(s.name).includes(nNome) || nNome.includes(normalizar(s.name)));
+    if(match) return match;
+    // Tentativa 3: primeiro nome bate
+    const primeiroNome = nNome.split(/\s+/)[0];
+    if(primeiroNome.length >= 3)
+      match = allStaff.find(s => normalizar(s.name).split(/\s+/)[0] === primeiroNome);
+    if(match) return match;
+    // Tentativa 4: qualquer palavra do nome (>=4 chars) está no cadastro
+    const palavras = nNome.split(/\s+/).filter(p=>p.length>=4);
+    for(const p of palavras){
+      match = allStaff.find(s => normalizar(s.name).includes(p));
+      if(match) return match;
+    }
+    return null;
+  }
+
+  // Divide o texto em blocos por funcionário
+  // Detecta início de bloco pela presença de padrões de nome (Consultor:, Professor:, Nome:, ou linha com nome após emoji de pessoa)
+  const linhas = text.split('\n');
+  const blocos = [];
+  let blocoAtual = [];
+
+  const ehCabecalhoBloco = (linha) => {
+    const l = linha.toLowerCase();
+    return /consultor\s*[:：]/.test(l) ||
+           /professor\s*[:：]/.test(l) ||
+           /funcion[aá]rio\s*[:：]/.test(l) ||
+           /colaborador\s*[:：]/.test(l) ||
+           /nome\s*[:：]/.test(l) ||
+           /👤/.test(linha);
+  };
+
+  for(const linha of linhas){
+    if(ehCabecalhoBloco(linha) && blocoAtual.length > 0){
+      blocos.push(blocoAtual.join('\n'));
+      blocoAtual = [];
+    }
+    blocoAtual.push(linha);
+  }
+  if(blocoAtual.length) blocos.push(blocoAtual.join('\n'));
+
+  // Se não conseguiu dividir em blocos, trata tudo como um bloco
+  const blocosFinais = blocos.length ? blocos : [text];
+
+  const boletinsParaSalvar = [];
+  const naoBateram = [];
+
+  for(const bloco of blocosFinais){
+    if(!bloco.trim()) continue;
+
+    // Extrai nome do funcionário
+    const nomeRaw = extrairTexto(bloco, ['👤\\s*consultor','👤\\s*professor','👤\\s*funcion[aá]rio','👤\\s*colaborador','👤\\s*nome','consultor','professor','funcion[aá]rio','colaborador','nome']);
+    if(!nomeRaw){ naoBateram.push('(bloco sem nome identificado)'); continue; }
+
+    const staff = encontrarFuncionario(nomeRaw);
+    if(!staff){ naoBateram.push(nomeRaw); continue; }
+
+    const data = extrairData(bloco);
+    const unidadeBloco = unidade; // usa a unidade selecionada no campo
+
+    if(staff.role === 'recepcao'){
+      const visitas    = extrairValor(bloco, ['visitas?','👣\\s*visitas?']);
+      const agendamentos = extrairValor(bloco, ['agendamentos?','📅\\s*agendamentos?']);
+      const ligacoes   = extrairValor(bloco, ['liga[çc][oõ]es?','📞\\s*liga[çc][oõ]es?']);
+      const social     = extrairValor(bloco, ['social\\s*sell?ing','📷\\s*social']);
+      const story      = extrairValor(bloco, ['story','📷\\s*story']);
+      const vendas     = extrairValor(bloco, ['vendas?','💰\\s*vendas?']);
+      const contacts   = ligacoes + social; // soma ligações + social selling
+      const salesLines = vendas > 0 ? Array(vendas).fill('Importado').join('\n') : '';
+      const notesExtra = [];
+      if(story > 0) notesExtra.push(`Story: ${story}`);
+      if(social > 0) notesExtra.push(`Social Selling: ${social}`);
+
+      boletinsParaSalvar.push({
+        type:'recepcao', author:staff.name, date:data, unidade:unidadeBloco,
+        data:{
+          visits: String(visitas),
+          appointments: String(agendamentos),
+          contacts: String(contacts),
+          sales: salesLines,
+          noSaleReasons: [], noSaleOther: '',
+          notes: notesExtra.join(' | ')
+        }
+      });
+    } else {
+      const treinos  = extrairValor(bloco, ['treinos?\\s*prescritos?','treinos?','💪\\s*treinos?']);
+      const novos    = extrairValor(bloco, ['novos?\\s*treinos?','novos?']);
+      const renov    = extrairValor(bloco, ['renova[çc][oõ]es?','renov']);
+      const eng      = extrairValor(bloco, ['engajamento','🔥\\s*engajamento']);
+      const turnoTxt = extrairTexto(bloco, ['turno','🌅\\s*turno']);
+      const turno    = /tarde/i.test(turnoTxt)?'Tarde':/noite/i.test(turnoTxt)?'Noite':'Manhã';
+      const equip    = extrairTexto(bloco, ['equipamentos?\\s*com\\s*problema','equipamentos?','🔧']);
+      const org      = extrairTexto(bloco, ['organiza[çc][aã]o','organiz']);
+      const count    = /não|nao/i.test(extrairTexto(bloco,['contagem']))?'Não':'Sim';
+      const obs      = extrairTexto(bloco, ['observa[çc][oõ]es?','obs']);
+
+      boletinsParaSalvar.push({
+        type:'musculacao', author:staff.name, date:data, unidade:unidadeBloco,
+        data:{
+          shift: turno,
+          trainings: String(treinos),
+          newTrainings: String(novos),
+          renewTrainings: String(renov),
+          engagement: String(eng),
+          equipment: equip||'',
+          organization: org||'Sim',
+          countDone: count,
+          notes: obs||''
+        }
+      });
+    }
   }
 
   // Salvar no Supabase
@@ -792,8 +879,8 @@ Se um nome não corresponder a nenhum cadastrado, ignore-o. Todos os valores num
     else{
       salvos++;
       if(b.type==='recepcao'){
-        const vendas=b.data.sales?.split('\n').filter(l=>l.trim()).length||0;
-        resultados.push({nome:b.author,tipo:'recepcao',dados:`${vendas} vendas · ${b.data.visits||0} visitas · ${b.data.contacts||0} contatos`});
+        const v=b.data.sales?.split('\n').filter(l=>l.trim()).length||0;
+        resultados.push({nome:b.author,tipo:'recepcao',dados:`${v} vendas · ${b.data.visits||0} visitas · ${b.data.contacts||0} contatos`});
       } else {
         resultados.push({nome:b.author,tipo:'musculacao',dados:`${b.data.trainings||0} treinos · engaj +${b.data.engagement||0} · ${b.data.shift||'Manhã'}`});
       }
@@ -802,9 +889,17 @@ Se um nome não corresponder a nenhum cadastrado, ignore-o. Todos os valores num
 
   btn.disabled=false; btn.innerHTML='<i class="ti ti-sparkles"></i> Processar e importar';
 
-  const rows=resultados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(r.nome)}</div><div><p style="font-size:13px;font-weight:500;margin:0">${r.nome}</p><p style="font-size:12px;color:var(--t2);margin:0">${r.dados}</p></div></div><span style="font-size:12px;background:var(--bgs);color:var(--ts);padding:2px 8px;border-radius:var(--br)">✅ Salvo</span></div>`).join('');
+  if(!resultados.length && !naoBateram.length){
+    el('imp-result').innerHTML=`<div class="alert" style="background:var(--bgw);color:var(--tw);border:0.5px solid var(--bw)"><i class="ti ti-alert-circle"></i> Nenhum funcionário identificado. Verifique se os nomes no relatório correspondem aos cadastrados.</div>`;
+    return;
+  }
+
+  const rows = resultados.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--br);padding:8px 12px;margin-bottom:6px"><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:32px;height:32px;font-size:11px">${initials(r.nome)}</div><div><p style="font-size:13px;font-weight:500;margin:0">${r.nome}</p><p style="font-size:12px;color:var(--t2);margin:0">${r.dados}</p></div></div><span style="font-size:12px;background:var(--bgs);color:var(--ts);padding:2px 8px;border-radius:var(--br)">✅ Salvo</span></div>`).join('');
+
+  const naoRows = naoBateram.length ? `<div style="background:var(--bgw);border:0.5px solid var(--bw);border-radius:var(--br);padding:.625rem 1rem;margin-top:8px;font-size:12px;color:var(--tw)"><i class="ti ti-alert-triangle"></i> Não identificados (verifique o cadastro): ${naoBateram.join(', ')}</div>` : '';
+
   el('imp-result').innerHTML=`<div style="background:var(--bgs);border:0.5px solid var(--bs);border-radius:var(--br);padding:.75rem 1rem;margin-bottom:12px;color:var(--ts);font-size:13px"><i class="ti ti-circle-check"></i> ${salvos} boletim${salvos!==1?'s':''} importado${salvos!==1?'s':''} com sucesso${erros>0?` · ${erros} erro(s)`:''}.
-</div>${rows}<button onclick="loadGestor();setGTab('dash')" style="margin-top:8px;font-size:13px"><i class="ti ti-layout-dashboard"></i> Ver no dashboard</button>`;
+</div>${rows}${naoRows}<button onclick="loadGestor();setGTab('dash')" style="margin-top:8px;font-size:13px"><i class="ti ti-layout-dashboard"></i> Ver no dashboard</button>`;
 }
 
 function extrairNumero(texto,palavras){
