@@ -151,15 +151,39 @@ input[type=checkbox],input[type=radio]{width:16px;height:16px;cursor:pointer}
         <div class="field"><label>Engajamento (+/-)</label><input id="m-eng" placeholder="Ex: +7 ou -2"/></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
-        <div class="field"><label>Equipamentos com problema</label><input id="m-equip" placeholder="Ex: Esteira nº 9 — ou deixe em branco"/></div>
-        <div class="field"><label>Organização do salão</label><input id="m-org" placeholder="Ex: Sim, 2x · Não — motivo..."/></div>
+        <div class="field">
+          <label>Equipamentos com problema? <span style="font-size:11px;color:var(--t2)">(Sim/Não — se sim, qual?)</span></label>
+          <div style="display:flex;gap:12px;margin-bottom:6px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="equipProb" value="Não" checked onchange="toggleEquip(this)"> Não</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="equipProb" value="Sim" onchange="toggleEquip(this)"> Sim</label>
+          </div>
+          <input id="m-equip" class="hidden" placeholder="Qual equipamento e o problema?"/>
+        </div>
+        <div class="field">
+          <label>Organização do salão ao final do turno?</label>
+          <div style="display:flex;gap:12px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="orgDone" value="Sim" checked> Sim</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="orgDone" value="Não"> Não</label>
+          </div>
+        </div>
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:13px;color:var(--t2);display:block;margin-bottom:6px">Contagem no salão feita?</label>
-        <div style="display:flex;gap:16px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Sim" checked> Sim</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Não"> Não</label>
+        <div style="display:flex;gap:16px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Sim" checked onchange="toggleContagem(this)"> Sim</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="countDone" value="Não" onchange="toggleContagem(this)"> Não</label>
         </div>
+        <input id="m-count-times" placeholder="Horários da contagem (ex: 09h, 11h, 14h)"/>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+        <div class="field">
+          <label>Solicitação de NPS/Google</label>
+          <div style="display:flex;gap:12px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="npsDone" value="Sim" checked> Sim</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer"><input type="radio" name="npsDone" value="Não"> Não</label>
+          </div>
+        </div>
+        <div class="field"><label>Contato com os Ausentes</label><input id="m-absent" placeholder="Ex: 3 alunos contactados, nomes ou observação..."/></div>
       </div>
       <div class="field" style="margin-bottom:16px"><label>Observações</label><input id="m-notes" placeholder="Algo relevante do turno..."/></div>
       <button id="m-btn" onclick="saveMusculacao()" style="width:100%;justify-content:center;background:var(--bgw);color:var(--tw);border-color:var(--bw)"><i class="ti ti-device-floppy"></i> Salvar boletim</button>
@@ -292,15 +316,51 @@ async function saveRecepcao(){
   el('r-outro').classList.add('hidden');
 }
 
+function toggleEquip(radio){
+  const inp=el('m-equip');
+  if(radio.value==='Sim'){inp.classList.remove('hidden');inp.focus();}
+  else{inp.classList.add('hidden');inp.value='';}
+}
+function toggleContagem(radio){
+  el('m-count-times').style.display=radio.value==='Sim'?'block':'none';
+  if(radio.value==='Não') el('m-count-times').value='';
+}
+
 async function saveMusculacao(){
   const btn=el('m-btn'); btn.disabled=true; btn.innerHTML='<i class="ti ti-loader"></i> Salvando...';
   hide('t-ok'); hide('t-err');
-  const countDone=document.querySelector('input[name="countDone"]:checked')?.value||'Sim';
-  const{error}=await sb.from('boletins').insert({type:'musculacao',author:currentUser,date:el('m-date').value,unidade:UNIDADE_ID,data:{shift:el('m-shift').value,trainings:el('m-trainings').value,newTrainings:el('m-new').value,renewTrainings:el('m-renew').value,engagement:el('m-eng').value,equipment:el('m-equip').value,organization:el('m-org').value,countDone,notes:el('m-notes').value}});
+  const countDone  = document.querySelector('input[name="countDone"]:checked')?.value||'Sim';
+  const equipProb  = document.querySelector('input[name="equipProb"]:checked')?.value||'Não';
+  const orgDone    = document.querySelector('input[name="orgDone"]:checked')?.value||'Sim';
+  const npsDone    = document.querySelector('input[name="npsDone"]:checked')?.value||'Sim';
+  const equipment  = equipProb==='Sim' ? (el('m-equip').value||'Sim — sem detalhe') : 'Não';
+  const countTimes = countDone==='Sim' ? el('m-count-times').value : '';
+  const{error}=await sb.from('boletins').insert({
+    type:'musculacao',author:currentUser,date:el('m-date').value,unidade:UNIDADE_ID,
+    data:{
+      shift:el('m-shift').value,
+      trainings:el('m-trainings').value,
+      newTrainings:el('m-new').value,
+      renewTrainings:el('m-renew').value,
+      engagement:el('m-eng').value,
+      equipment,
+      organization:orgDone,
+      countDone,
+      countTimes,
+      npsDone,
+      absentContact:el('m-absent').value,
+      notes:el('m-notes').value
+    }
+  });
   btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i> Salvar boletim';
   if(error){show('t-err');return;}
   show('t-ok'); setTimeout(()=>hide('t-ok'),4000);
-  ['m-trainings','m-new','m-renew','m-eng','m-equip','m-org','m-notes'].forEach(id=>el(id).value='');
+  ['m-trainings','m-new','m-renew','m-eng','m-equip','m-count-times','m-absent','m-notes'].forEach(id=>{const e=el(id);if(e)e.value='';});
+  document.querySelectorAll('input[name="equipProb"]')[0].checked=true;
+  document.querySelectorAll('input[name="orgDone"]')[0].checked=true;
+  document.querySelectorAll('input[name="countDone"]')[0].checked=true;
+  document.querySelectorAll('input[name="npsDone"]')[0].checked=true;
+  el('m-equip').classList.add('hidden');
 }
 
 // ── GESTOR ────────────────────────────────────────────────────────────────
@@ -324,7 +384,7 @@ async function loadGestor(){
     const d=r.data||{};
     return{id:r.id,author:r.author,date:r.date,type:r.type,unidade:r.unidade||UNIDADE_ID,
       visits:d.visits,appointments:d.appointments,contacts:d.contacts,sales:d.sales,noSaleReasons:d.noSaleReasons||[],noSaleOther:d.noSaleOther,
-      shift:d.shift,trainings:d.trainings,newTrainings:d.newTrainings,renewTrainings:d.renewTrainings,engagement:d.engagement,equipment:d.equipment,organization:d.organization,countDone:d.countDone,notes:d.notes};
+      shift:d.shift,trainings:d.trainings,newTrainings:d.newTrainings,renewTrainings:d.renewTrainings,engagement:d.engagement,equipment:d.equipment,organization:d.organization,countDone:d.countDone,countTimes:d.countTimes,npsDone:d.npsDone,absentContact:d.absentContact,notes:d.notes};
   });
   allFeedbacks=(fRes.data||[]).reduce((a,r)=>{a[r.author]=r.feedback;return a;},{});
   allStaff=sRes.data||[];
